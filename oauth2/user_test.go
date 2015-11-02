@@ -1,11 +1,13 @@
-package oauth2
+package oauth2_test
 
 import (
+	"github.com/gourd/kit/oauth2"
+
 	"math/rand"
 	"testing"
 )
 
-func dummyNewUser(password string) *User {
+func dummyNewUser(password string) *oauth2.User {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 	randSeq := func(n int) string {
@@ -16,7 +18,7 @@ func dummyNewUser(password string) *User {
 		return string(b)
 	}
 
-	u := &User{
+	u := &oauth2.User{
 		Username: randSeq(10),
 	}
 	u.Password = u.Hash(password)
@@ -24,6 +26,6 @@ func dummyNewUser(password string) *User {
 }
 
 func TestUser(t *testing.T) {
-	var u OAuth2User = &User{}
+	var u oauth2.OAuth2User = &oauth2.User{}
 	_ = u
 }

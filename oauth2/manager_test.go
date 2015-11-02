@@ -1,6 +1,8 @@
-package oauth2
+package oauth2_test
 
 import (
+	"github.com/gourd/kit/oauth2"
+
 	"encoding/json"
 	"fmt"
 	"github.com/codegangsta/negroni"
@@ -28,12 +30,12 @@ func testOAuth2ServerApp() http.Handler {
 	rtr := pat.New()
 
 	// oauth2 manager
-	m := NewManager()
+	m := oauth2.NewManager()
 
 	// add oauth2 endpoints to router
 	// ServeEndpoints bind OAuth2 endpoints to a given base path
 	// Note: this is router specific and need to be generated somehow
-	RoutePat(rtr, "/oauth", m.GetEndpoints())
+	oauth2.RoutePat(rtr, "/oauth", m.GetEndpoints())
 
 	// add a route the requires access
 	rtr.Get("/content", func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +43,7 @@ func testOAuth2ServerApp() http.Handler {
 		log.Printf("Dummy content page accessed")
 
 		// obtain access
-		a, err := GetAccess(r)
+		a, err := oauth2.GetAccess(r)
 		if err != nil {
 			log.Printf("Dummy content: access error: %s", err.Error())
 			fmt.Fprint(w, "Permission Denied")
@@ -102,7 +104,7 @@ func TestOAuth2(t *testing.T) {
 	password := "password"
 
 	// create dummy oauth client and user
-	c, u := func(tcs *httptest.Server, password, redirect string) (*Client, *User) {
+	c, u := func(tcs *httptest.Server, password, redirect string) (*oauth2.Client, *oauth2.User) {
 		r := &http.Request{}
 
 		// generate dummy user
@@ -133,7 +135,7 @@ func TestOAuth2(t *testing.T) {
 
 	// build user request to authorization endpoint
 	// get response from client web app redirect uri
-	code, err := func(c *Client, u *User, password, redirect string) (code string, err error) {
+	code, err := func(c *oauth2.Client, u *oauth2.User, password, redirect string) (code string, err error) {
 
 		log.Printf("Test retrieving code ====")
 
@@ -190,7 +192,7 @@ func TestOAuth2(t *testing.T) {
 
 	// retrieve token from token endpoint
 	// get response from client web app redirect uri
-	token, err := func(c *Client, code, redirect string) (token string, err error) {
+	token, err := func(c *oauth2.Client, code, redirect string) (token string, err error) {
 
 		log.Printf("Test retrieving token ====")
 

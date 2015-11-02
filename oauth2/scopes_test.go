@@ -1,11 +1,13 @@
-package oauth2
+package oauth2_test
 
 import (
+	"github.com/gourd/kit/oauth2"
+
 	"testing"
 )
 
-func testScopes() *Scopes {
-	return &Scopes{"hello", "world"}
+func testScopes() *oauth2.Scopes {
+	return &oauth2.Scopes{"hello", "world"}
 }
 
 // test if BasicScopes implements Scopes

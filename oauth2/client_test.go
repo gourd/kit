@@ -1,12 +1,14 @@
-package oauth2
+package oauth2_test
 
 import (
+	"github.com/gourd/kit/oauth2"
+
 	"github.com/RangelReale/osin"
 	"math/rand"
 	"testing"
 )
 
-func dummyNewClient(redirectUri string) *Client {
+func dummyNewClient(redirectUri string) *oauth2.Client {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 	randSeq := func(n int) string {
@@ -17,7 +19,7 @@ func dummyNewClient(redirectUri string) *Client {
 		return string(b)
 	}
 
-	return &Client{
+	return &oauth2.Client{
 		Id:          randSeq(10),
 		Secret:      randSeq(10),
 		RedirectUri: redirectUri,
@@ -26,6 +28,6 @@ func dummyNewClient(redirectUri string) *Client {
 }
 
 func TestClient(t *testing.T) {
-	var c osin.Client = &Client{}
+	var c osin.Client = &oauth2.Client{}
 	_ = c
 }
