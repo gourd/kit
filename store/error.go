@@ -44,14 +44,44 @@ type StoreError struct {
 	DeveloperMsg string `json:"developer_message,omitempty"`
 }
 
+// TellServer sets server message
+func (err *StoreError) TellServer(msg string) {
+	err.ServerMsg = msg
+}
+
+// TellServerf sets server message
+func (err *StoreError) TellServerf(msg string, v ...interface{}) {
+	err.TellServer(fmt.Sprintf(msg, v...))
+}
+
+// TellClient sets server message
+func (err *StoreError) TellClient(msg string) {
+	err.ClientMsg = msg
+}
+
+// TellClientf sets server message
+func (err *StoreError) TellClientf(msg string, v ...interface{}) {
+	err.TellClient(fmt.Sprintf(msg, v...))
+}
+
+// TellDeveloper sets server message
+func (err *StoreError) TellDeveloper(msg string) {
+	err.DeveloperMsg = msg
+}
+
+// TellServerf sets server message
+func (err *StoreError) TellDeveloperf(msg string, v ...interface{}) {
+	err.TellDeveloper(fmt.Sprintf(msg, v...))
+}
+
 // Error implements the standard error type
 // returns the client message
-func (err *StoreError) Error() string {
+func (err StoreError) Error() string {
 	return err.ClientMsg
 }
 
 // String implements Stringer type which
 // returns the client message
-func (err *StoreError) String() string {
+func (err StoreError) String() string {
 	return err.ClientMsg
 }
