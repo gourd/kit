@@ -39,7 +39,8 @@ func TestGetFail(t *testing.T) {
 
 func TestMiddleware(t *testing.T) {
 	ep := testEndpoint()
-	_, err := perm.UseMux(ep, perm.NewMux())(nil, nil)
+	var mw endpoint.Middleware = perm.UseMux(perm.NewMux())
+	_, err := mw(ep)(nil, nil)
 	if err != nil {
 		t.Errorf("test error: %#v", err.Error())
 	}

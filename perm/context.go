@@ -6,10 +6,12 @@ import (
 )
 
 // Use mux add a perm Mux to a context for later retrieve
-func UseMux(inner endpoint.Endpoint, m Mux) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		ctx = WithMux(ctx, m)
-		return inner(ctx, request)
+func UseMux(m Mux) endpoint.Middleware {
+	return func(inner endpoint.Endpoint) endpoint.Endpoint {
+		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+			ctx = WithMux(ctx, m)
+			return inner(ctx, request)
+		}
 	}
 }
 
