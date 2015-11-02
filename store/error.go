@@ -45,33 +45,21 @@ type StoreError struct {
 }
 
 // TellServer sets server message
-func (err *StoreError) TellServer(msg string) {
-	err.ServerMsg = msg
-}
-
-// TellServerf sets server message
-func (err *StoreError) TellServerf(msg string, v ...interface{}) {
-	err.TellServer(fmt.Sprintf(msg, v...))
+func (err *StoreError) TellServer(msg string, v ...interface{}) *StoreError {
+	err.ServerMsg = fmt.Sprintf(msg, v...)
+	return err
 }
 
 // TellClient sets server message
-func (err *StoreError) TellClient(msg string) {
-	err.ClientMsg = msg
-}
-
-// TellClientf sets server message
-func (err *StoreError) TellClientf(msg string, v ...interface{}) {
-	err.TellClient(fmt.Sprintf(msg, v...))
+func (err *StoreError) TellClient(msg string, v ...interface{}) *StoreError {
+	err.ClientMsg = fmt.Sprintf(msg, v...)
+	return err
 }
 
 // TellDeveloper sets server message
-func (err *StoreError) TellDeveloper(msg string) {
-	err.DeveloperMsg = msg
-}
-
-// TellServerf sets server message
-func (err *StoreError) TellDeveloperf(msg string, v ...interface{}) {
-	err.TellDeveloper(fmt.Sprintf(msg, v...))
+func (err *StoreError) TellDeveloper(msg string, v ...interface{}) *StoreError {
+	err.DeveloperMsg = fmt.Sprintf(msg, v...)
+	return err
 }
 
 // Error implements the standard error type

@@ -48,3 +48,40 @@ func TestError(t *testing.T) {
 	}
 
 }
+
+func TestErrorFormat(t *testing.T) {
+	tpl := "(%s) some custom bad request: %#v"
+	msg := "hello world"
+
+	estatus := rand.Intn(900)
+	ecode := estatus*100 + rand.Intn(100)
+
+	err := store.Error(ecode, "").
+		TellClient(tpl, "client", msg).
+		TellDeveloper(tpl, "developer", msg).
+		TellServer(tpl, "server", msg)
+
+	if want, have := fmt.Sprintf(tpl, "client", msg), err.String(); want != have {
+		t.Errorf("want: %#v, got %#v", want, have)
+	}
+
+	if want, have := fmt.Sprintf(tpl, "client", msg), fmt.Sprintf("%s", err); want != have {
+		t.Errorf("want: %#v, got %#v", want, have)
+	}
+
+	if want, have := fmt.Sprintf(tpl, "client", msg), err.Error(); want != have {
+		t.Errorf("want: %#v, got %#v", want, have)
+	}
+
+	if want, have := fmt.Sprintf(tpl, "client", msg), err.ClientMsg; want != have {
+		t.Errorf("want: %#v, got %#v", want, have)
+	}
+
+	if want, have := fmt.Sprintf(tpl, "developer", msg), err.DeveloperMsg; want != have {
+		t.Errorf("want: %#v, got %#v", want, have)
+	}
+
+	if want, have := fmt.Sprintf(tpl, "server", msg), err.ServerMsg; want != have {
+		t.Errorf("want: %#v, got %#v", want, have)
+	}
+}
