@@ -11,6 +11,9 @@ type Result interface {
 	// Raw returns the underlying database result variable
 	Raw() (interface{}, error)
 
+	// Count returns the number of items matches match the given query
+	Count() (count uint64, err error)
+
 	// Close closes the result set
 	Close() error
 }

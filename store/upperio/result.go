@@ -48,6 +48,25 @@ func (res *Result) Raw() (interface{}, error) {
 	return res.raw()
 }
 
+// Count returns the count of items of the given query
+func (res *Result) Count() (count uint64, err error) {
+	dbres, err := res.raw()
+	if err != nil {
+		serr := store.ErrorInternal
+		serr.ServerMsg = err.Error()
+		err = serr
+		return
+	}
+
+	count, err = dbres.Count()
+	if err != nil {
+		serr := store.ErrorInternal
+		serr.ServerMsg = err.Error()
+		err = serr
+	}
+	return
+}
+
 // Close closes the result set
 func (res *Result) Close() error {
 	return res.Close()
