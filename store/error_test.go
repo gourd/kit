@@ -9,7 +9,7 @@ import (
 )
 
 func TestError(t *testing.T) {
-	estatus := rand.Intn(900)
+	estatus := (rand.Intn(9) * 100) + (rand.Intn(9) * 10)
 	ecode := estatus*100 + rand.Intn(100)
 	emsg := fmt.Sprintf("random error %d", ecode)
 
