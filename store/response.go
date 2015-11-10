@@ -5,6 +5,14 @@ import (
 	"net/http"
 )
 
+// ExpandResponse converts a map[string]interface{} into proper
+// JSON-marshalable response
+func ExpandResponse(vmap map[string]interface{}) *Response {
+	return &Response{
+		vals: vmap,
+	}
+}
+
 // NewResponse return a service response pointer
 func NewResponse(key string, v interface{}) *Response {
 	res := &Response{
