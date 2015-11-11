@@ -8,11 +8,19 @@ import (
 	"github.com/gourd/kit/store"
 )
 
-func TestError(t *testing.T) {
-	estatus := (rand.Intn(9) * 100) + (rand.Intn(9) * 10)
-	ecode := estatus*100 + rand.Intn(100)
-	emsg := fmt.Sprintf("random error %d", ecode)
+func testErrorCode() (estatus, ecode int, emsg string) {
+	// estatus should be a 3 digits number
+	estatus = ((rand.Intn(9) + 1) * 100) + (rand.Intn(9) * 10)
 
+	// ecode should be a 5 digits number
+	ecode = estatus*100 + rand.Intn(100)
+
+	emsg = fmt.Sprintf("random error %d", ecode)
+	return
+}
+
+func TestError(t *testing.T) {
+	estatus, ecode, emsg := testErrorCode()
 	var err error = store.Error(ecode, emsg)
 	code, msg := store.ParseError(err)
 
