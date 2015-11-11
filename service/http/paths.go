@@ -1,8 +1,6 @@
 package http
 
-import (
-	"path"
-)
+import "path"
 
 // Paths return the URL base and the RESTful
 // service noun
@@ -10,11 +8,12 @@ type Paths interface {
 	Base() string
 	Noun() Noun
 	Path(name string) string
+	Method(name string) string
 }
 
 // NounToPath is the type to translate name and noun into
 // basic path (path after base)
-type NounToPath func(name string, noun Noun) string
+type NounToPath func(name string, noun Noun) (path, method string)
 
 // NewPaths return the default Paths implementation with given
 // information
@@ -45,5 +44,12 @@ func (p paths) Noun() Noun {
 
 // Path implements Paths
 func (p paths) Path(name string) string {
-	return path.Join(p.Base(), p.toPath(name, p.Noun()))
+	namedPath, _ := p.toPath(name, p.Noun())
+	return path.Join(p.Base(), namedPath)
+}
+
+// Method implements Paths
+func (p paths) Method(name string) string {
+	_, method := p.toPath(name, p.Noun())
+	return method
 }

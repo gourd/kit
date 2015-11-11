@@ -13,19 +13,23 @@ import (
 	"testing"
 )
 
-func TestDesc_DecodeFunc(t *testing.T) {
+func testDesc() httpservice.Desc {
 	base, sing, plur := "/some/path", "ball", "balls"
 	n := httpservice.NewNoun(sing, plur)
-	p := httpservice.NewPaths(base, n, func(name string, noun httpservice.Noun) string {
+	p := httpservice.NewPaths(base, n, func(name string, noun httpservice.Noun) (string, string) {
 		switch name {
 		case "create":
-			return noun.Plural()
+			return noun.Plural(), "POST"
 		case "update":
-			return path.Join(noun.Singular(), "{id}")
+			return path.Join(noun.Singular(), "{id}"), "POST"
 		}
-		return ""
+		return "", ""
 	})
-	d := httpservice.NewDesc(p)
+	return httpservice.NewDesc(p)
+}
+
+func TestDesc_DecodeFunc(t *testing.T) {
+	d := testDesc()
 	d.SetDecodeFunc("hello", func(r *http.Request) (request interface{}, err error) {
 		request = "world"
 		return
@@ -40,18 +44,7 @@ func TestDesc_DecodeFunc(t *testing.T) {
 }
 
 func TestDesc_Middleware(t *testing.T) {
-	base, sing, plur := "/some/path", "ball", "balls"
-	n := httpservice.NewNoun(sing, plur)
-	p := httpservice.NewPaths(base, n, func(name string, noun httpservice.Noun) string {
-		switch name {
-		case "create":
-			return noun.Plural()
-		case "update":
-			return path.Join(noun.Singular(), "{id}")
-		}
-		return ""
-	})
-	d := httpservice.NewDesc(p)
+	d := testDesc()
 	d.SetMiddleware("hello", func(inner endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, req interface{}) (resp interface{}, err error) {
 			innerResp, err := inner(ctx, req)

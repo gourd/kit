@@ -26,12 +26,12 @@ func (d desc) Paths() Paths {
 	return d.paths
 }
 
-// SetMiddleware implements Desc inteface
+// SetMethod implements Desc inteface
 func (d *desc) SetMiddleware(name string, mware endpoint.Middleware) {
 	d.middlewares[name] = mware
 }
 
-// GetMiddleware implements Desc interface
+// GetMethod implements Desc interface
 func (d desc) GetMiddleware(name string) endpoint.Middleware {
 	if mware, ok := d.middlewares[name]; ok {
 		return mware
