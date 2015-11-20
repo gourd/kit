@@ -3,7 +3,6 @@ package http_test
 import (
 	"fmt"
 	"net/http"
-	"path"
 
 	"golang.org/x/net/context"
 
@@ -16,15 +15,7 @@ import (
 func testDesc() httpservice.Desc {
 	base, sing, plur := "/some/path", "ball", "balls"
 	n := httpservice.NewNoun(sing, plur)
-	p := httpservice.NewPaths(base, n, func(name string, noun httpservice.Noun) (string, string) {
-		switch name {
-		case "create":
-			return noun.Plural(), "POST"
-		case "update":
-			return path.Join(noun.Singular(), "{id}"), "POST"
-		}
-		return "", ""
-	})
+	p := httpservice.NewPaths(base, n, "someid")
 	return httpservice.NewDesc(p)
 }
 

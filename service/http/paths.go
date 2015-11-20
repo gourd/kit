@@ -7,29 +7,25 @@ import "path"
 type Paths interface {
 	Base() string
 	Noun() Noun
-	Path(name string) string
-	Method(name string) string
+	Singular() string
+	Plural() string
 }
-
-// NounToPath is the type to translate name and noun into
-// basic path (path after base)
-type NounToPath func(name string, noun Noun) (path, method string)
 
 // NewPaths return the default Paths implementation with given
 // information
-func NewPaths(base string, noun Noun, toPath NounToPath) Paths {
+func NewPaths(base string, noun Noun, idStr string) Paths {
 	return &paths{
 		base,
 		noun,
-		toPath,
+		idStr,
 	}
 }
 
 // paths is the default implementation of Paths
 type paths struct {
-	base   string
-	noun   Noun
-	toPath NounToPath
+	base  string
+	noun  Noun
+	idStr string
 }
 
 // Base implements Paths
@@ -42,14 +38,12 @@ func (p paths) Noun() Noun {
 	return p.noun
 }
 
-// Path implements Paths
-func (p paths) Path(name string) string {
-	namedPath, _ := p.toPath(name, p.Noun())
-	return path.Join(p.Base(), namedPath)
+// Singular implements Paths
+func (p paths) Singular() string {
+	return path.Join(p.base, p.Noun().Singular(), p.idStr)
 }
 
-// Method implements Paths
-func (p paths) Method(name string) string {
-	_, method := p.toPath(name, p.Noun())
-	return method
+// Plural implements Paths
+func (p paths) Plural() string {
+	return path.Join(p.base, p.Noun().Plural())
 }
