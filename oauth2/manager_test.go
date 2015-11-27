@@ -2,6 +2,7 @@ package oauth2_test
 
 import (
 	"errors"
+	"path"
 
 	"github.com/gourd/kit/oauth2"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/gourd/kit/store"
 )
 
+// testRedirectErr helps capture the redirect URL
+// in RedirectFunc
 type testRedirectErr struct {
 	msg      string
 	redirect *url.URL
@@ -31,6 +34,13 @@ func (err testRedirectErr) Error() string {
 
 func (err testRedirectErr) Redirect() *url.URL {
 	return err.redirect
+}
+
+// testNoRedirect implements RedirectFunc in *http.Request.
+// It stops redirection and return an error containing
+// the redirect URL
+func testNoRedirect(req *http.Request, via []*http.Request) error {
+	return testRedirectErr{"no redirect", req.URL}
 }
 
 // test the testRedirectErr type
@@ -53,7 +63,7 @@ func TestRedirectErr(t *testing.T) {
 }
 
 // creates dummy client and user directly from the stores
-func testOauth2Dummies(password, redirect string) (*oauth2.Client, *oauth2.User) {
+func createDummies(password, redirect string) (*oauth2.Client, *oauth2.User) {
 	r := &http.Request{}
 
 	// generate dummy user
@@ -82,21 +92,10 @@ func testOauth2Dummies(password, redirect string) (*oauth2.Client, *oauth2.User)
 	return c, u
 }
 
-// handles redirection
-func testNoRedirect(req *http.Request, via []*http.Request) error {
-	log.Printf("redirect url: %#v", req.URL.Query().Get("code"))
-	return testRedirectErr{"no redirect", req.URL}
-}
+// getCodeRequest generates the http request to get code
+func getCodeRequest(c *oauth2.Client, u *oauth2.User, password, authURL, redirect string) *http.Request {
 
-// testGetCode request code from authorize endpoint
-// with given redirect URL.
-// It build user request to authorization endpoint
-// get response from client web app redirect uri
-func testGetCode(c *oauth2.Client, u *oauth2.User, password, authURL, redirect string) (code string, err error) {
-
-	log.Printf("Test retrieving code ====")
-
-	// login form
+	// login form request
 	form := url.Values{}
 	form.Add("user_id", u.Username)
 	form.Add("password", password)
@@ -112,10 +111,18 @@ func testGetCode(c *oauth2.Client, u *oauth2.User, password, authURL, redirect s
 		authURL+"?"+q.Encode(),
 		strings.NewReader(form.Encode()))
 	if err != nil {
-		err = fmt.Errorf("Failed to form new request: %s", err.Error())
-		return
+		panic(err) // not quite possible
 	}
+
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return req
+}
+
+// getCodeHTTP runs the getCodeRequest with actual
+// HTTP client and parse the result as code, error
+func getCodeHTTP(req *http.Request) (code string, err error) {
+
+	log.Printf("Test retrieving code ====")
 
 	// new http client to emulate user request
 	hc := &http.Client{
@@ -142,8 +149,89 @@ func testGetCode(c *oauth2.Client, u *oauth2.User, password, authURL, redirect s
 	return
 }
 
+// getTokenRequest generates request which client app
+// send to oauth2 server for the token
+func getTokenRequest(c *oauth2.Client, code, tokenURL, redirect string) *http.Request {
+	// build user request to token endpoint
+	form := &url.Values{}
+	form.Add("code", code)
+	form.Add("client_id", c.GetId())
+	form.Add("client_secret", c.Secret)
+	form.Add("grant_type", "authorization_code")
+	form.Add("redirect_uri", redirect)
+	req, err := http.NewRequest("POST",
+		tokenURL,
+		strings.NewReader(form.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		panic(err)
+	}
+	return req
+}
+
+// getTokenHTTP runs the getTokenRequest with actual
+// HTTP client and parse the result as token, error
+func getTokenHTTP(req *http.Request) (token string, err error) {
+
+	log.Printf("Test retrieving token ====")
+
+	// new http client to emulate user request
+	hc := &http.Client{}
+	resp, err := hc.Do(req)
+	if err != nil {
+		err = fmt.Errorf("Failed run the request: %s", err.Error())
+	}
+
+	// read token from token endpoint response (json)
+	bodyDecoded := make(map[string]string)
+	dec := json.NewDecoder(resp.Body)
+	dec.Decode(&bodyDecoded)
+
+	log.Printf("Response Body: %#v", bodyDecoded)
+	var ok bool
+	if token, ok = bodyDecoded["access_token"]; !ok {
+		err = fmt.Errorf(
+			"Unable to parse access_token: %s", err.Error())
+	}
+	return
+}
+
+// getContentRequest generates a request to content endpoint
+// of the OAuth2 server / OAuth2 guarded resource server
+func getContentRequest(token, contentURL string) *http.Request {
+	req, err := http.NewRequest("GET", contentURL, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// additional information
+	req.Header.Add("Authority", token)
+	return req
+}
+
+// getContentHTTP runs the getContentRequest with actual
+// HTTP client and parse the result as body, error
+func getContentHTTP(r *http.Request) (body string, err error) {
+	// new http client to emulate user request
+	hc := &http.Client{}
+	resp, err := hc.Do(r)
+	if err != nil {
+		err = fmt.Errorf("Failed run the request: %s", err.Error())
+		return
+	}
+
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = fmt.Errorf("Failed to read body: %s", err.Error())
+		return
+	}
+
+	body = string(raw)
+	return
+}
+
 // example server web app
-func testOAuth2ServerApp(msg string) http.Handler {
+func testOAuth2Server(baseURL, msg string) http.Handler {
 
 	rtr := pat.New()
 
@@ -153,7 +241,7 @@ func testOAuth2ServerApp(msg string) http.Handler {
 	// add oauth2 endpoints to router
 	// ServeEndpoints bind OAuth2 endpoints to a given base path
 	// Note: this is router specific and need to be generated somehow
-	oauth2.RoutePat(rtr, "/oauth", m.GetEndpoints())
+	oauth2.RoutePat(rtr, baseURL, m.GetEndpoints())
 
 	// add a route the requires access
 	rtr.Get("/content", func(w http.ResponseWriter, r *http.Request) {
@@ -190,10 +278,10 @@ func testOAuth2ServerApp(msg string) http.Handler {
 }
 
 // example client web app in the login
-func testOAuth2ClientApp(path string) *pat.Router {
+func testAppServer(path string) *pat.Router {
 	rtr := pat.New()
 
-	log.Printf("testOAuth2ClientApp(%#v)", path)
+	log.Printf("testAppServer(%#v)", path)
 
 	// add dummy client reception of redirection
 	rtr.Get(path, func(w http.ResponseWriter, r *http.Request) {
@@ -208,85 +296,51 @@ func testOAuth2ClientApp(path string) *pat.Router {
 	return rtr
 }
 
-func TestOAuth2(t *testing.T) {
+// TestOAuth2HTTP tests the stack with
+// actual HTTP call against httptest.Server
+// wrapped handlers
+func TestOAuth2HTTP(t *testing.T) {
+
+	// a dummy password for dummy user
+	password := "password"
+	message := "Success"
 
 	// create test oauth2 server
-	ts := httptest.NewServer(testOAuth2ServerApp("Success"))
+	oauth2URL := "/oauth2"
+	ts := httptest.NewServer(testOAuth2Server(oauth2URL, message))
+	authEndpoint := ts.URL + path.Join(oauth2URL, "/authorize")
+	tokenEndpoint := ts.URL + path.Join(oauth2URL, "/token")
 	defer ts.Close()
+	t.Logf("auth endpoint %#v", authEndpoint)
 
 	// create test client server
 	tcsbase := "/example_app/"
 	tcspath := tcsbase + "code"
-	tcs := httptest.NewServer(testOAuth2ClientApp(tcspath))
+	tcs := httptest.NewServer(testAppServer(tcspath))
 	defer tcs.Close()
 
-	// a dummy password for dummy user
-	password := "password"
-
 	// create dummy oauth client and user
-	c, u := testOauth2Dummies(password, tcs.URL+tcsbase)
-	code, err := testGetCode(c, u, password, ts.URL+"/oauth/authorize", tcs.URL+tcspath)
+	c, u := createDummies(password, tcs.URL+tcsbase)
+	code, err := getCodeHTTP(getCodeRequest(c, u, password, authEndpoint, tcs.URL+tcspath))
 	if err != nil {
-		// quit if error
 		t.Errorf(err.Error())
 		return
 	}
 
 	// retrieve token from token endpoint
 	// get response from client web app redirect uri
-	token, err := func(c *oauth2.Client, code, redirect string) (token string, err error) {
-
-		log.Printf("Test retrieving token ====")
-
-		// build user request to token endpoint
-		form := &url.Values{}
-		form.Add("code", code)
-		form.Add("client_id", c.GetId())
-		form.Add("client_secret", c.Secret)
-		form.Add("grant_type", "authorization_code")
-		form.Add("redirect_uri", redirect)
-		req, err := http.NewRequest("POST",
-			ts.URL+"/oauth/token",
-			strings.NewReader(form.Encode()))
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		if err != nil {
-			t.Errorf("Failed to form new request: %s", err.Error())
-		}
-
-		// new http client to emulate user request
-		hc := &http.Client{}
-		resp, err := hc.Do(req)
-		if err != nil {
-			err = fmt.Errorf("Failed run the request: %s", err.Error())
-		}
-
-		// read token from token endpoint response (json)
-		bodyDecoded := make(map[string]string)
-		dec := json.NewDecoder(resp.Body)
-		dec.Decode(&bodyDecoded)
-
-		log.Printf("Response Body: %#v", bodyDecoded)
-		var ok bool
-		if token, ok = bodyDecoded["access_token"]; !ok {
-			err = fmt.Errorf(
-				"Unable to parse access_token: %s", err.Error())
-		}
-		return
-
-	}(c, code, tcs.URL+tcspath)
-
-	// quit if error
+	token, err := getTokenHTTP(getTokenRequest(c, code, tokenEndpoint, tcs.URL+tcspath))
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
 
 	// retrieve a testing content path
-	body, err := func(token string) (body string, err error) {
+	body, err := func(token, contentURL string) (body string, err error) {
 
 		log.Printf("Test accessing content with token ====")
 
-		req, err := http.NewRequest("GET", ts.URL+"/content", nil)
+		req, err := http.NewRequest("GET", contentURL, nil)
 		req.Header.Add("Authority", token)
 
 		// new http client to emulate user request
@@ -305,17 +359,18 @@ func TestOAuth2(t *testing.T) {
 
 		body = string(raw)
 		return
-	}(token)
+	}(token, ts.URL+"/content")
 
 	// quit if error
 	if err != nil {
 		t.Errorf(err.Error())
 		return
-	} else if body != "Success" {
-		t.Errorf("Content Incorrect. Expecting \"Success\" but get \"%s\"", body)
 	}
 
 	// final result
-	log.Printf("result: \"%s\"", body)
+	if want, have := message, body; want != have {
+		t.Errorf("expected: %#v, got: %#v", want, have)
+	}
+	log.Printf("result: %#v", string(body))
 
 }
