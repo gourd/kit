@@ -13,8 +13,8 @@ func TestEmptyContextDeadline(t *testing.T) {
 	if ok != false {
 		t.Error("default ok (in `_, ok := context.Deadline()`) should be false")
 	}
-	if !dl.Equal(time.Unix(0, 0)) {
-		t.Error("default deadline time should be unix epoch")
+	if want, have := time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), dl; !have.Equal(want) {
+		t.Errorf("unexpected deadline time\nExpect: %s\nGot:    %s", want, have)
 	}
 }
 
