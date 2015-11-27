@@ -118,9 +118,9 @@ func getContent(srvr http.Handler, r *http.Request) (body string, err error) {
 	return
 }
 
-// getAccess emulates process inside a content server
+// getRequestAccess emulates process inside a content server
 // and try to retrieve AccessData from oauth2.Manager
-func getAccess(token, contentURL string) (access *oauth2.AccessData, err error) {
+func getRequestAccess(token, contentURL string) (access *oauth2.AccessData, err error) {
 	// test getting access data in context
 	m := oauth2.NewManager()
 	h := m.Middleware()
@@ -128,11 +128,11 @@ func getAccess(token, contentURL string) (access *oauth2.AccessData, err error) 
 	h.ServeHTTP(nil, req)
 
 	// try to get access information
-	access, err = oauth2.GetAccess(req)
+	access, err = oauth2.GetRequestAccess(req)
 	return
 }
 
-func TestGetAccess(t *testing.T) {
+func TestGetRequestAccess(t *testing.T) {
 
 	// test oauth2 server (router only)
 	oauth2URL := "/oauth2/dummy"
@@ -180,14 +180,14 @@ func TestGetAccess(t *testing.T) {
 
 	// test getting access data from store,
 	// emulating server environment
-	access, err := getAccess(token, contentURL)
+	access, err := getRequestAccess(token, contentURL)
 	if err != nil {
 		switch err.(type) {
 		case *store.StoreError:
 			serr := err.(*store.StoreError)
-			t.Errorf("oauth2.GetAccess StoreError (%#v)", serr.ServerMsg)
+			t.Errorf("oauth2.GetRequestAccess StoreError (%#v)", serr.ServerMsg)
 		default:
-			t.Errorf("oauth2.GetAccess error (%#v)", err.Error())
+			t.Errorf("oauth2.GetRequest	Access error (%#v)", err.Error())
 		}
 	}
 

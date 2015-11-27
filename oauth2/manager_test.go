@@ -249,7 +249,7 @@ func testOAuth2Server(baseURL, msg string) http.Handler {
 		log.Printf("Dummy content page accessed")
 
 		// obtain access
-		a, err := oauth2.GetAccess(r)
+		a, err := oauth2.GetRequestAccess(r)
 		if err != nil {
 			log.Printf("Dummy content: access error: %s", err.Error())
 			fmt.Fprint(w, "Permission Denied")

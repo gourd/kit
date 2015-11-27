@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/context"
+	gcontext "github.com/gorilla/context"
 	"github.com/gourd/kit/store"
 )
 
@@ -12,6 +12,7 @@ type key int
 
 const (
 	storageKey key = iota
+	accessKey  key = iota
 )
 
 // Middleware is a generic middleware
@@ -27,13 +28,13 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sc := m.storage.Clone()
 	s := sc.(*Storage)
 	s.SetRequest(r)
-	context.Set(r, storageKey, s)
+	gcontext.Set(r, storageKey, s)
 }
 
 // GetStorageOk returns oauth2 storage in context and a boolean flag.
 // If process failed, boolean flag will be false
 func GetStorageOk(r *http.Request) (s *Storage, ok bool) {
-	raw := context.Get(r, storageKey)
+	raw := gcontext.Get(r, storageKey)
 	s, ok = raw.(*Storage)
 	return
 }
@@ -45,9 +46,9 @@ func GetStorage(r *http.Request) *Storage {
 	return s
 }
 
-// GetAccess returns oauth2 AccessData with token
-// found in "Authority" header variable
-func GetAccess(r *http.Request) (d *AccessData, err error) {
+// GetRequestAccess returns oauth2 AccessData with token
+// found in "Authority" header variable of the HTTP Request
+func GetRequestAccess(r *http.Request) (d *AccessData, err error) {
 	token := r.Header.Get("Authority")
 	return GetTokenAccess(r, token)
 }
