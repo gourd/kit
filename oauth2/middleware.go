@@ -1,13 +1,18 @@
 package oauth2
 
 import (
-	"github.com/gorilla/context"
-	"github.com/gourd/kit/store"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/context"
+	"github.com/gourd/kit/store"
 )
 
-var contextKey int
+type key int
+
+const (
+	storageKey key = iota
+)
 
 // Middleware is a generic middleware
 // to serve a Storage instance to
@@ -22,13 +27,13 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sc := m.storage.Clone()
 	s := sc.(*Storage)
 	s.SetRequest(r)
-	context.Set(r, &contextKey, s)
+	context.Set(r, storageKey, s)
 }
 
 // GetStorageOk returns oauth2 storage in context and a boolean flag.
 // If process failed, boolean flag will be false
 func GetStorageOk(r *http.Request) (s *Storage, ok bool) {
-	raw := context.Get(r, &contextKey)
+	raw := context.Get(r, storageKey)
 	s, ok = raw.(*Storage)
 	return
 }
