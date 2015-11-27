@@ -3,8 +3,9 @@ package oauth2
 
 import (
 	"fmt"
-	"github.com/RangelReale/osin"
 	"time"
+
+	"github.com/RangelReale/osin"
 )
 
 // AuthorizeData interfacing database to osin storage I/O of same name
@@ -72,5 +73,9 @@ func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) error {
 	d.State = od.State
 	d.CreatedAt = od.CreatedAt
 	d.UserData = od.UserData
+	if d.UserData != nil {
+		user := od.UserData.(*User) // presume *User here
+		d.UserId = user.Id
+	}
 	return nil
 }

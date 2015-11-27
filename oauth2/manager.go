@@ -2,11 +2,12 @@ package oauth2
 
 import (
 	"errors"
-	"github.com/RangelReale/osin"
-	"github.com/gourd/kit/store"
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/RangelReale/osin"
+	"github.com/gourd/kit/store"
 )
 
 // Endpoints contains http handler func of different endpoints

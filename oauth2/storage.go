@@ -1,10 +1,11 @@
 package oauth2
 
 import (
-	"github.com/RangelReale/osin"
-	"github.com/gourd/kit/store"
 	"log"
 	"net/http"
+
+	"github.com/RangelReale/osin"
+	"github.com/gourd/kit/store"
 )
 
 // Storage implements osin.Storage
@@ -158,6 +159,17 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 		return
 	}
 
+	// load user data here
+	if e.UserId != "" {
+		userStore, err := storage.User.Store(storage.r)
+		if err != nil {
+			return d, err
+		}
+		user := &User{}
+		userStore.One(store.NewConds().Add("id", e.UserId), user)
+		e.UserData = user
+	}
+
 	d = e.ToOsin()
 	return
 }
@@ -255,6 +267,7 @@ func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error)
 			log.Printf("Unable to cast client into Client type: %#v", cli)
 			return
 		}
+		e.ClientId = e.Client.GetId()
 
 		// load authdata here
 		if e.AuthorizeCode != "" {
@@ -289,6 +302,17 @@ func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error)
 				return err
 			}
 			e.AccessData = ad
+		}
+
+		// load user data here
+		if e.UserId != "" {
+			userStore, err := storage.User.Store(storage.r)
+			if err != nil {
+				return err
+			}
+			user := &User{}
+			userStore.One(store.NewConds().Add("id", e.UserId), user)
+			e.UserData = user
 		}
 
 		return

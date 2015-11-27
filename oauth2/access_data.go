@@ -3,17 +3,18 @@ package oauth2
 
 import (
 	"fmt"
-	"github.com/RangelReale/osin"
 	"time"
+
+	"github.com/RangelReale/osin"
 )
 
 // AccessData interfacing database to osin storage I/O of same name
 type AccessData struct {
 
-	// Authorize Data Id
+	// Id is the primary key of AccessData
 	Id string `db:"id,omitempty"`
 
-	// Client Id the data is linked to
+	// ClientId is the client which this AccessData is linked to
 	ClientId string `db:"client_id"`
 
 	// Client information
@@ -75,6 +76,9 @@ func (d *AccessData) ToOsin() (od *osin.AccessData) {
 	if d.AccessData != nil {
 		od.AccessData = d.AccessData.ToOsin()
 	}
+	if d.UserData != nil {
+		od.UserData = d.UserData
+	}
 	return
 }
 
@@ -94,6 +98,7 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) error {
 	if od.Client != nil {
 		if c, ok := od.Client.(*Client); ok {
 			d.Client = c
+			d.ClientId = c.GetId()
 		} else {
 			err := fmt.Errorf("Failed to read client from osin.AccessData (%#v)", od.Client)
 			return err
@@ -103,11 +108,16 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) error {
 		oaud := &AuthorizeData{}
 		oaud.ReadOsin(od.AuthorizeData)
 		d.AuthorizeData = oaud
+		d.UserId = oaud.UserId
 	}
 	if od.AccessData != nil {
 		oacd := &AccessData{}
 		oacd.ReadOsin(od.AccessData)
 		d.AccessData = oacd
+	}
+	if od.UserData != nil {
+		user := od.UserData.(*User) // presume *User here
+		d.UserId = user.Id
 	}
 
 	return nil
