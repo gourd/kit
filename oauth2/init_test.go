@@ -5,6 +5,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+
+	"github.com/gourd/kit/store/upperio"
+	"upper.io/db/sqlite"
 )
 
 func init() {
@@ -38,4 +41,9 @@ func init() {
 
 		log.Fatalf("Failed to run sqlite command")
 	}
+
+	// define test db
+	upperio.Define("default", sqlite.Adapter, sqlite.ConnectionURL{
+		Database: dbpath,
+	})
 }

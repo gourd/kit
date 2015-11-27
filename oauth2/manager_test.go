@@ -5,10 +5,6 @@ import (
 
 	"encoding/json"
 	"fmt"
-	"github.com/codegangsta/negroni"
-	"github.com/gorilla/pat"
-	"github.com/gourd/kit/store"
-	"github.com/gourd/kit/store/upperio"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,16 +12,14 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"upper.io/db/sqlite"
+
+	"github.com/codegangsta/negroni"
+	"github.com/gorilla/pat"
+	"github.com/gourd/kit/store"
 )
 
 // example server web app
 func testOAuth2ServerApp() http.Handler {
-
-	// define test db
-	upperio.Define("default", sqlite.Adapter, sqlite.ConnectionURL{
-		Database: `./_test/sqlite3.db`,
-	})
 
 	rtr := pat.New()
 
