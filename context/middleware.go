@@ -19,7 +19,7 @@ func UseGorilla(parent context.Context, r *http.Request) context.Context {
 func ClearGorilla(inner endpoint.Endpoint) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		response, err = inner(ctx, request)
-		if r, ok := HTTPRequest(ctx); ok {
+		if r := HTTPRequest(ctx); r != nil {
 			gcontext.Clear(r)
 		}
 		return
