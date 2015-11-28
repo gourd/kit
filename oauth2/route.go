@@ -10,10 +10,8 @@ import (
 func RoutePat(rtr *pat.Router, base string, ep *Endpoints) {
 
 	// tell user where the endpoints are
-	log.Printf("OAuth2 endpoints"+
-		"\nauthorize endpoint: %s/authorize"+
-		"\ntoken endpoint:     %s/token",
-		base, base)
+	log.Printf("OAuth2 authorize endpoint: %s/authorize", base)
+	log.Printf("OAuth2 token endpoint:     %s/token", base)
 
 	// bind handler with pat
 	rtr.Get(base+"/authorize", ep.Auth)
