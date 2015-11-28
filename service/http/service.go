@@ -43,7 +43,7 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 		Methods:     []string{"GET"},
 		Context:     gourdctx.NewEmpty(),
 		Endpoint:    ep,
-		Middlewares: Middlewares{[]endpoint.Middleware{}, nil, nil, []endpoint.Middleware{}},
+		Middlewares: &Middlewares{},
 		EncodeFunc:  jsonEncodeFunc,
 		Options: []httptransport.ServerOption{
 			httptransport.ServerBefore(gourdctx.UseGorilla),
@@ -58,7 +58,7 @@ type Service struct {
 	Path        string
 	Methods     []string
 	Context     context.Context
-	Middlewares Middlewares
+	Middlewares *Middlewares
 	Endpoint    endpoint.Endpoint
 	DecodeFunc  httptransport.DecodeRequestFunc
 	EncodeFunc  httptransport.EncodeResponseFunc

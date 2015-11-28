@@ -24,20 +24,18 @@ func TestService_Normal(t *testing.T) {
 		}
 		return
 	})
-	s.Middlewares.Inner = []endpoint.Middleware{
-		func(inner endpoint.Endpoint) endpoint.Endpoint {
-			return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-				response, err = inner(ctx, request)
-				if err != nil {
-					return
-				}
-
-				vmap := response.(map[string]interface{})
-				vmap[resultKey] = fmt.Sprintf("hello %s", vmap[resultKey])
+	s.Middlewares.Add(httpservice.MWInner, func(inner endpoint.Endpoint) endpoint.Endpoint {
+		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+			response, err = inner(ctx, request)
+			if err != nil {
 				return
 			}
-		},
-	}
+
+			vmap := response.(map[string]interface{})
+			vmap[resultKey] = fmt.Sprintf("hello %s", vmap[resultKey])
+			return
+		}
+	})
 	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
 		request = "world"
 		return
