@@ -36,6 +36,16 @@ const (
 	MWInner    = 10
 )
 
+// MWCond is the condition for removing middleware in a set
+type MWCond func(mw Middleware) bool
+
+// WeightIs returns MWCond that matches middleware by weight
+func WeightIs(weight int) MWCond {
+	return func(mw Middleware) bool {
+		return mw.Weight == weight
+	}
+}
+
 // Middleware wrap a middleware with a weight parameter
 type Middleware struct {
 	endpoint.Middleware
@@ -65,6 +75,17 @@ func (wares *Middlewares) Add(weight int, waresToAdd ...endpoint.Middleware) {
 	for _, ware := range waresToAdd {
 		*wares = append(*wares, Middleware{ware, weight})
 	}
+}
+
+// Remove removes a middleware by condition
+func (wares *Middlewares) Remove(cond MWCond) {
+	wares2 := Middlewares{}
+	for _, ware := range *wares {
+		if !cond(ware) {
+			wares2 = append(wares2, ware)
+		}
+	}
+	*wares = wares2
 }
 
 // Slice returns a sorted []endpoint.Middleware

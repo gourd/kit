@@ -58,3 +58,51 @@ func TestMiddleware(t *testing.T) {
 	}
 
 }
+
+func TestMiddleware_Remove(t *testing.T) {
+	ms := &httpservice.Middlewares{}
+
+	m1 := func(inner endpoint.Endpoint) endpoint.Endpoint {
+		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+			response, err = inner(ctx, request)
+			response = fmt.Sprintf("m1(%s)", response)
+			return
+		}
+	}
+	m2 := func(inner endpoint.Endpoint) endpoint.Endpoint {
+		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+			response, err = inner(ctx, request)
+			response = fmt.Sprintf("m2(%s)", response)
+			return
+		}
+	}
+
+	ep := func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		response = fmt.Sprintf("ep(%s)", request)
+		return
+	}
+	if resp, _ := ep(nil, "hello"); resp == nil {
+		t.Errorf("unexpected nil")
+	} else if want, have := "ep(hello)", resp; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+
+	ms.Add(1, m1)
+	ms.Add(2, m2)
+
+	if resp, _ := ms.Chain()(ep)(nil, "hello"); resp == nil {
+		t.Errorf("unexpected nil")
+	} else if want, have := "m1(m2(ep(hello)))", resp; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+
+	ms.Remove(httpservice.WeightIs(2))
+	ms.Add(-1, m2)
+
+	if resp, _ := ms.Chain()(ep)(nil, "hello"); resp == nil {
+		t.Errorf("unexpected nil")
+	} else if want, have := "m2(m1(ep(hello)))", resp; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+
+}
