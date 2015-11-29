@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -84,3 +85,27 @@ func (s Service) Route(rtr RouterFunc) error {
 
 // RouterFunc generalize router to route an http.Handler
 type RouterFunc func(path string, methods []string, h http.Handler) error
+
+// Services contain a group of named services
+type Services map[string]*Service
+
+// Patch takes a patch / patches and apply them to the group
+func (services Services) Patch(patches ...ServicesPatch) {
+	for _, patch := range patches {
+		services = patch(services)
+	}
+}
+
+// Route routes all services in the group
+func (services Services) Route(rtr RouterFunc) (err error) {
+	for name := range services {
+		if err = services[name].Route(rtr); err != nil {
+			err = fmt.Errorf("error routing %#v (%#v)", name, err.Error())
+			return
+		}
+	}
+	return
+}
+
+// ServicesPatch patches all children in a map[string]*Service
+type ServicesPatch func(Services) Services

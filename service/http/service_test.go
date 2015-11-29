@@ -86,3 +86,121 @@ func TestService_Error(t *testing.T) {
 	}
 	t.Logf("err: %#v", serr)
 }
+
+func TestServices_Route(t *testing.T) {
+	resultKey := "result"
+	servicePath := "/foo/bar"
+
+	// dummy service to test
+	var services httpservice.Services = make(map[string]*httpservice.Service)
+	s := httpservice.NewJSONService(servicePath, func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		response = map[string]interface{}{
+			resultKey: request,
+		}
+		return
+	})
+	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
+		request = "hello world"
+		return
+	}
+	services["example"] = s
+
+	m := http.NewServeMux()
+
+	// lazy implementation routerfunc for ServeMux
+	// that simply skip method handling (don't try this at home)
+	rtfn := func(m *http.ServeMux) httpservice.RouterFunc {
+		return func(path string, methods []string, h http.Handler) error {
+			m.Handle(path, h)
+			return nil
+		}
+	}(m)
+
+	// route dumy service
+	services.Route(rtfn)
+
+	// variables for decoding
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", servicePath, nil)
+	m.ServeHTTP(w, req)
+	vmap := make(map[string]interface{})
+
+	// try decoding
+	dec := json.NewDecoder(w.Body)
+	if err := dec.Decode(&vmap); err != nil {
+		t.Errorf("error decoding response: %#v", err.Error())
+	} else if result, ok := vmap[resultKey]; !ok {
+		t.Errorf("got no %#v in vmap: %#v", resultKey, vmap)
+	} else if want, have := "hello world", result; want != have {
+		t.Errorf("expect: %#v, got: %#v", want, have)
+	}
+}
+
+func TestServices_Patch(t *testing.T) {
+	resultKey := "result"
+	servicePath := "/foo/bar"
+
+	// dummy service to test
+	var services httpservice.Services = make(map[string]*httpservice.Service)
+	s := httpservice.NewJSONService(servicePath, func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		response = map[string]interface{}{
+			resultKey: request,
+		}
+		return
+	})
+	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
+		request = "world"
+		return
+	}
+	services["example"] = s
+
+	m := http.NewServeMux()
+
+	// lazy implementation routerfunc for ServeMux
+	// that simply skip method handling (don't try this at home)
+	rtfn := func(m *http.ServeMux) httpservice.RouterFunc {
+		return func(path string, methods []string, h http.Handler) error {
+			m.Handle(path, h)
+			return nil
+		}
+	}(m)
+
+	// add middleware with patch
+	patch := func(services httpservice.Services) httpservice.Services {
+		for name := range services {
+			services[name].Middlewares.Add(httpservice.MWInner, func(inner endpoint.Endpoint) endpoint.Endpoint {
+				return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+					response, err = inner(ctx, request)
+					if err != nil {
+						return
+					}
+
+					vmap := response.(map[string]interface{})
+					vmap[resultKey] = fmt.Sprintf("hello %s", vmap[resultKey])
+					return
+				}
+			})
+		}
+		return services
+	}
+
+	// route dumy service
+	services.Patch(patch)
+	services.Route(rtfn)
+
+	// variables for decoding
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", servicePath, nil)
+	m.ServeHTTP(w, req)
+	vmap := make(map[string]interface{})
+
+	// try decoding
+	dec := json.NewDecoder(w.Body)
+	if err := dec.Decode(&vmap); err != nil {
+		t.Errorf("error decoding response: %#v", err.Error())
+	} else if result, ok := vmap[resultKey]; !ok {
+		t.Errorf("got no %#v in vmap: %#v", resultKey, vmap)
+	} else if want, have := "hello world", result; want != have {
+		t.Errorf("expect: %#v, got: %#v", want, have)
+	}
+}
