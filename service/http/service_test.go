@@ -14,17 +14,22 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestService_Normal(t *testing.T) {
-	resultKey := "result"
+func testServiceSuit(path, resultKey string) (s *httpservice.Service, mware endpoint.Middleware) {
 
-	// create handler with service
-	s := httpservice.NewJSONService("/foo/bar", func(ctx context.Context, request interface{}) (response interface{}, err error) {
+	// dummy service
+	s = httpservice.NewJSONService(path, func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		response = map[string]interface{}{
 			resultKey: request,
 		}
 		return
 	})
-	s.Middlewares.Add(httpservice.MWInner, func(inner endpoint.Endpoint) endpoint.Endpoint {
+	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
+		request = "world"
+		return
+	}
+
+	// dummy middleware
+	mware = func(inner endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			response, err = inner(ctx, request)
 			if err != nil {
@@ -35,11 +40,16 @@ func TestService_Normal(t *testing.T) {
 			vmap[resultKey] = fmt.Sprintf("hello %s", vmap[resultKey])
 			return
 		}
-	})
-	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
-		request = "world"
-		return
 	}
+	return
+}
+
+func TestService_Normal(t *testing.T) {
+	resultKey := "result"
+
+	// create handler with service
+	s, mware := testServiceSuit("/foo/bar", resultKey)
+	s.Middlewares.Add(httpservice.MWInner, mware)
 	h := s.Handler()
 
 	// variables for decoding
@@ -93,16 +103,8 @@ func TestServices_Route(t *testing.T) {
 
 	// dummy service to test
 	var services httpservice.Services = make(map[string]*httpservice.Service)
-	s := httpservice.NewJSONService(servicePath, func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		response = map[string]interface{}{
-			resultKey: request,
-		}
-		return
-	})
-	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
-		request = "hello world"
-		return
-	}
+	s, mware := testServiceSuit(servicePath, resultKey)
+	s.Middlewares.Add(httpservice.MWInner, mware)
 	services["example"] = s
 
 	m := http.NewServeMux()
@@ -142,16 +144,7 @@ func TestServices_Patch(t *testing.T) {
 
 	// dummy service to test
 	var services httpservice.Services = make(map[string]*httpservice.Service)
-	s := httpservice.NewJSONService(servicePath, func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		response = map[string]interface{}{
-			resultKey: request,
-		}
-		return
-	})
-	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
-		request = "world"
-		return
-	}
+	s, mware := testServiceSuit(servicePath, resultKey)
 	services["example"] = s
 
 	m := http.NewServeMux()
@@ -168,18 +161,7 @@ func TestServices_Patch(t *testing.T) {
 	// add middleware with patch
 	patch := func(services httpservice.Services) httpservice.Services {
 		for name := range services {
-			services[name].Middlewares.Add(httpservice.MWInner, func(inner endpoint.Endpoint) endpoint.Endpoint {
-				return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-					response, err = inner(ctx, request)
-					if err != nil {
-						return
-					}
-
-					vmap := response.(map[string]interface{})
-					vmap[resultKey] = fmt.Sprintf("hello %s", vmap[resultKey])
-					return
-				}
-			})
+			services[name].Middlewares.Add(httpservice.MWInner, mware)
 		}
 		return services
 	}
