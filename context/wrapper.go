@@ -9,7 +9,10 @@ import (
 
 type key int
 
-const reqKey key = 0
+const (
+	reqKey key = iota
+	idKey  key = iota
+)
 
 // WithHTTPRequest adds the current HTTP Request to context.Context
 func WithHTTPRequest(parent context.Context, r *http.Request) context.Context {
@@ -49,4 +52,17 @@ func (ctx *wrapper) Value(key interface{}) interface{} {
 		return val
 	}
 	return ctx.Context.Value(key)
+}
+
+// WithID add a string ID to the context (for session tracking)
+func WithID(parent context.Context, id string) context.Context {
+	return context.WithValue(parent, idKey, id)
+}
+
+// GetID get the string ID from request
+func GetID(ctx context.Context) string {
+	if v := ctx.Value(idKey); v != nil {
+		return v.(string)
+	}
+	return ""
 }

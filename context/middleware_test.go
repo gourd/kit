@@ -53,3 +53,19 @@ func TestClearGorilla(t *testing.T) {
 		t.Error("still be able to get gorilla context value after clear")
 	}
 }
+
+func TestUseID(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/foo/bar", nil)
+	ctx := gourdctx.UseID(context.Background(), r)
+	var id string
+
+	if id = gourdctx.GetRequestID(r); id == "" {
+		t.Errorf("unexpected empty string")
+		return
+	}
+
+	if want, have := id, gourdctx.GetID(ctx); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+
+}

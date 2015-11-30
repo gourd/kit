@@ -56,3 +56,16 @@ func TestGorilla(t *testing.T) {
 	}
 
 }
+
+func TestWithID(t *testing.T) {
+	id := "foobar"
+	ctx0 := context.Background()
+	ctx1 := gourdctx.WithID(ctx0, id)
+
+	if want, have := "", gourdctx.GetID(ctx0); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+	if want, have := id, gourdctx.GetID(ctx1); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+}
