@@ -41,6 +41,8 @@ func UseID(parent context.Context, r *http.Request) context.Context {
 		id := newID()
 		r.Header.Set("X-GOURD-ID", id)
 		return WithID(parent, id)
+	} else {
+		return WithID(parent, prevID) // reuse previous ID
 	}
 	return parent
 }

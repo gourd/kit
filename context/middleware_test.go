@@ -69,3 +69,18 @@ func TestUseID(t *testing.T) {
 	}
 
 }
+
+func TestUseID_Reuse(t *testing.T) {
+	r, _ := http.NewRequest("GET", "/foo/bar", nil)
+	id := "hello"
+	r.Header.Set("X-GOURD-ID", id)
+	ctx := gourdctx.UseID(context.Background(), r)
+
+	if want, have := id, gourdctx.GetRequestID(r); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+	if want, have := id, gourdctx.GetID(ctx); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+
+}
