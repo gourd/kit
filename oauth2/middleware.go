@@ -50,6 +50,9 @@ func GetStorage(r *http.Request) *Storage {
 // found in "Authority" header variable of the HTTP Request
 func GetRequestAccess(r *http.Request) (d *AccessData, err error) {
 	token := r.Header.Get("Authority")
+	if token == "" {
+		return // nothing
+	}
 	return GetTokenAccess(r, token)
 }
 
