@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	gcontext "github.com/gorilla/context"
+	gourdctx "github.com/gourd/kit/context"
 	"github.com/gourd/kit/store"
 )
 
@@ -24,7 +25,8 @@ type Middleware struct {
 // ServeHTTP implements http.Handler interface method.
 // Attach a clone of the storage to context
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Clone storage into context")
+	id := gourdctx.GetRequestID(r)
+	log.Printf("[%s] Clone storage into context", id)
 	sc := m.storage.Clone()
 	s := sc.(*Storage)
 	s.SetRequest(r)
@@ -68,11 +70,17 @@ func GetTokenAccess(r *http.Request, token string) (d *AccessData, err error) {
 		return
 	}
 
+	sessid := gourdctx.GetRequestID(r)
+
 	// get access by token
 	od, err := s.LoadAccess(token)
 	if err != nil {
-		log.Printf("Token: %s", token)
-		log.Printf("Failed to load access: %s", err.Error())
+		if err.Error() == "Not Found" {
+			return nil, nil
+		}
+
+		log.Printf("[%s] Token: %s", sessid, token)
+		log.Printf("[%s] Failed to load access: %s", sessid, err.Error())
 		return
 	}
 	d = &AccessData{}
