@@ -2,8 +2,11 @@ package upperio
 
 import (
 	"fmt"
-	"github.com/gorilla/context"
+	"log"
 	"net/http"
+
+	"github.com/gorilla/context"
+	gourdctx "github.com/gourd/kit/context"
 	"upper.io/db"
 )
 
@@ -11,7 +14,7 @@ import (
 // in database session management for upperio database
 var defs map[string]Def
 
-const upperCtxKey = "gourd/kit/store/upperio/"
+type ctxKey string
 
 func init() {
 	defs = make(map[string]Def)
@@ -36,8 +39,11 @@ func Define(name, adapter string, conn db.ConnectionURL) {
 // or retrieve the previously openned database session
 func Open(r *http.Request, name string) (d db.Database, err error) {
 
+	id := gourdctx.GetRequestID(r)
+	log.Printf("[%s] upperio.Open()", id)
+
 	// try getting from context
-	if cv, ok := context.GetOk(r, upperCtxKey+name); ok {
+	if cv, ok := context.GetOk(r, ctxKey(name)); ok {
 		if d, ok = cv.(db.Database); ok {
 			return
 		}
@@ -49,7 +55,7 @@ func Open(r *http.Request, name string) (d db.Database, err error) {
 		d, err = db.Open(def.Adapter, def.URL)
 		if err != nil {
 			// remember the database in context
-			context.Set(r, upperCtxKey+name, d)
+			context.Set(r, ctxKey(name), d)
 		}
 		return
 	}
@@ -65,7 +71,7 @@ func Close(r *http.Request, name string) error {
 	var d db.Database
 
 	// try getting from context
-	if cv, ok := context.GetOk(r, upperCtxKey+name); ok {
+	if cv, ok := context.GetOk(r, ctxKey(name)); ok {
 		if d, ok = cv.(db.Database); ok {
 			// disconnect
 			return d.Close()
