@@ -73,7 +73,7 @@ func TestUseID(t *testing.T) {
 func TestUseID_Reuse(t *testing.T) {
 	r, _ := http.NewRequest("GET", "/foo/bar", nil)
 	id := "hello"
-	r.Header.Set("X-GOURD-ID", id)
+	r.Header.Set(gourdctx.IDHeaderKey, id)
 	ctx := gourdctx.UseID(context.Background(), r)
 
 	if want, have := id, gourdctx.GetRequestID(r); want != have {

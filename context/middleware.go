@@ -1,15 +1,17 @@
 package context
 
 import (
-	"encoding/base64"
 	"net/http"
-	"strings"
 
 	"github.com/go-kit/kit/endpoint"
 	gcontext "github.com/gorilla/context"
 	"github.com/satori/go.uuid"
 	"golang.org/x/net/context"
 )
+
+// IDHeaderKey is the string key used
+// to store context ID in HTTP header
+const IDHeaderKey = "X-Request-ID"
 
 // UseGorilla implements go-kit http transport RequestFunc
 func UseGorilla(parent context.Context, r *http.Request) context.Context {
@@ -31,23 +33,21 @@ func ClearGorilla(inner endpoint.Endpoint) endpoint.Endpoint {
 
 // generate a new string ID with UUID
 func newID() string {
-	uid := uuid.NewV4()
-	return strings.TrimRight(base64.URLEncoding.EncodeToString(uid[:]), "=")
+	return uuid.NewV4().String()
 }
 
 // UseID add a string id to http request header and context
 func UseID(parent context.Context, r *http.Request) context.Context {
-	if prevID := r.Header.Get("X-GOURD-ID"); prevID == "" {
+	var prevID string
+	if prevID = r.Header.Get(IDHeaderKey); prevID == "" {
 		id := newID()
-		r.Header.Set("X-GOURD-ID", id)
+		r.Header.Set(IDHeaderKey, id)
 		return WithID(parent, id)
-	} else {
-		return WithID(parent, prevID) // reuse previous ID
 	}
-	return parent
+	return WithID(parent, prevID) // reuse previous ID
 }
 
 // GetRequestID get string id from http request
 func GetRequestID(r *http.Request) string {
-	return r.Header.Get("X-GOURD-ID")
+	return r.Header.Get(IDHeaderKey)
 }
