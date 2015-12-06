@@ -1,69 +1,49 @@
 package store_test
 
 import (
-	"github.com/gourd/kit/store"
-
-	"net/http"
+	"fmt"
 	"testing"
+
+	"github.com/gourd/kit/store"
 )
 
-func TestProvideFunc(t *testing.T) {
-	var f store.ProvideFunc = func(r *http.Request) (store.Store, error) {
-		return nil, nil
+func TestDefs_source(t *testing.T) {
+	dummySrc1 := func() (conn store.Conn, err error) {
+		err = fmt.Errorf("hello dummySrc")
+		return
 	}
-	var p store.Provider = f
-	_ = p
-	t.Log("ProvideFunc implements Provider")
+
+	defs := store.NewDefs()
+	defs.SetSource(store.DefaultSrc, dummySrc1)
+	dummySrc2 := defs.GetSource(store.DefaultSrc)
+
+	if _, err1 := dummySrc1(); err1 == nil {
+		t.Errorf("unexpected nil value")
+	} else if _, err2 := dummySrc2(); err2 == nil {
+		t.Errorf("unexpected nil value")
+	} else if want, have := err1.Error(), err2.Error(); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
 }
 
-func TestProviderStore(t *testing.T) {
-
-	// define a database source
-	store.Providers.DefineFunc(
-		"dummy",
-		func(r *http.Request) (store.Store, error) {
-			return nil, nil
-		},
-	)
-
-	// test creating the new database
-	p, err := store.Providers.Get("dummy")
-	if err != nil {
-		t.Error(err.Error())
+func TestDefs_store(t *testing.T) {
+	dummyPrvdr1 := func(sess interface{}) (s store.Store, err error) {
+		err = fmt.Errorf("hello dummyPrvdr")
+		return
 	}
 
-	// test the provider
-	r := &http.Request{}
-	s, err := p.Store(r)
-	if err != nil {
-		t.Error(err.Error())
-	} else if s != nil {
-		t.Errorf(
-			"Unexpected service provider result. Expecting nil but get %#v", s)
+	type tempKey int
+	var srcKey, storeKey tempKey = 0, 1
+
+	defs := store.NewDefs()
+	defs.Set(storeKey, srcKey, dummyPrvdr1)
+	_, dummyPrvdr2 := defs.Get(storeKey)
+
+	if _, err1 := dummyPrvdr1(nil); err1 == nil {
+		t.Errorf("unexpected nil value")
+	} else if _, err2 := dummyPrvdr2(nil); err2 == nil {
+		t.Errorf("unexpected nil value")
+	} else if want, have := err1.Error(), err2.Error(); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
 	}
-
-	t.Log("Provider and Providers routine works")
-
-}
-
-func TestProviderMustStore(t *testing.T) {
-
-	// define a database source
-	store.Providers.DefineFunc(
-		"dummy",
-		func(r *http.Request) (store.Store, error) {
-			return nil, nil
-		},
-	)
-	r := &http.Request{}
-
-	// test creating the new database
-	s := store.Providers.MustStore(r, "dummy")
-	if s != nil {
-		t.Errorf(
-			"Unexpected service provider result. Expecting nil but get %#v", s)
-	}
-
-	t.Log("Provider and Providers routine works")
-
 }
