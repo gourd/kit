@@ -1,13 +1,14 @@
 package upperio_test
 
 import (
-	"github.com/gourd/kit/store/upperio"
-
 	"database/sql"
+	"fmt"
 	"math/rand"
-	"net/http"
-	"testing"
 	"time"
+
+	"github.com/gourd/kit/store"
+
+	"upper.io/db"
 	"upper.io/db/sqlite"
 )
 
@@ -25,33 +26,27 @@ func RandStringRunes(n int) string {
 	return string(b)
 }
 
-func testUpperDb(fn string) (srcName string) {
-
-	// testing database name
-	srcName = RandStringRunes(10)
-
+func testUpperDb(fn string) (adapter string, connURL db.ConnectionURL) {
 	// define a database source
-	upperio.Define(
-		srcName,
-		sqlite.Adapter,
-		sqlite.ConnectionURL{
-			Database: fn,
-		},
-	)
-
+	adapter = sqlite.Adapter
+	connURL = sqlite.ConnectionURL{
+		Database: fn,
+	}
 	return
 }
 
-func testUpperDbData(t *testing.T, srcName string) string {
+func testUpperDbData(source store.Source) (err error) {
 
 	// dummy request
-	r := &http.Request{}
-
-	sess, err := upperio.Open(r, srcName)
+	conn, err := source()
 	if err != nil {
-		t.Fatalf(err.Error())
+		err = fmt.Errorf("unable to connect to source: %#v",
+			err.Error())
+		return
 	}
-	defer upperio.Close(r, srcName)
+	defer conn.Close()
+
+	sess := conn.Raw().(db.Database)
 
 	drv := sess.Driver().(*sql.DB)
 	_, err = drv.Exec(`
@@ -62,12 +57,16 @@ func testUpperDbData(t *testing.T, srcName string) string {
 		)
 	`)
 	if err != nil {
-		t.Fatalf(err.Error())
+		err = fmt.Errorf("unable to create dummy_data: %#v",
+			err.Error())
+		return
 	}
 
 	coll, err := sess.Collection("dummy_data")
 	if err != nil {
-		t.Fatalf(err.Error())
+		err = fmt.Errorf("unable to connect to dummy_data: %#v",
+			err.Error())
+		return
 	}
 
 	_, err = coll.Append(&testData{
@@ -76,7 +75,9 @@ func testUpperDbData(t *testing.T, srcName string) string {
 		Data:       "something",
 	})
 	if err != nil {
-		t.Fatalf(err.Error())
+		err = fmt.Errorf("unable to append dummy_data (foo bar): %#v",
+			err.Error())
+		return
 	}
 
 	_, err = coll.Append(&testData{
@@ -85,7 +86,9 @@ func testUpperDbData(t *testing.T, srcName string) string {
 		Data:       "something 2",
 	})
 	if err != nil {
-		t.Fatalf(err.Error())
+		err = fmt.Errorf("unable to append dummy_data (foo bar 2): %#v",
+			err.Error())
+		return
 	}
 
 	_, err = coll.Append(&testData{
@@ -94,10 +97,12 @@ func testUpperDbData(t *testing.T, srcName string) string {
 		Data:       "something 3",
 	})
 	if err != nil {
-		t.Fatalf(err.Error())
+		err = fmt.Errorf("unable to append dummy_data (foo bar 3): %#v",
+			err.Error())
+		return
 	}
 
-	return srcName
+	return
 }
 
 // for dummy database content

@@ -3,8 +3,8 @@ package upperio_test
 import (
 	"github.com/gourd/kit/store"
 	"github.com/gourd/kit/store/upperio"
+	"upper.io/db"
 
-	"net/http"
 	"os"
 	"testing"
 )
@@ -26,19 +26,30 @@ func TestConds(t *testing.T) {
 		AddCond("HelloWorld =", "foo bar").
 		AddCond("FooBar !=", "hello world")
 
-	// dummy request
-	r := &http.Request{}
+	// dummy source
+	source := upperio.Source(testUpperDb(fn))
 
-	srcName := testUpperDbData(t, testUpperDb(fn))
-	sess, err := upperio.Open(r, srcName)
+	// add dummy data to the database
+	if err := testUpperDbData(source); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// connect to database again
+	conn, err := source()
 	if err != nil {
 		t.Error(err.Error())
 	}
-	defer upperio.Close(r, srcName)
+	defer conn.Close()
 
 	// query connection
+	sess := conn.Raw().(db.Database)
 	coll, err := sess.Collection("dummy_data")
-	res := coll.Find(upperio.Conds(q.GetConds()))
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	conds := upperio.Conds(q.GetConds())
+	res := coll.Find(conds)
 	var tds []testData
 	res.All(&tds)
 
@@ -74,17 +85,23 @@ func TestConds_branching(t *testing.T) {
 
 	q.GetConds().SetRel(store.Or)
 
-	// dummy request
-	r := &http.Request{}
+	// test source
+	source := upperio.Source(testUpperDb(fn))
 
-	srcName := testUpperDbData(t, testUpperDb(fn))
-	sess, err := upperio.Open(r, srcName)
+	// add dummy data to the database
+	if err := testUpperDbData(source); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// connect to database again
+	conn, err := source()
 	if err != nil {
 		t.Error(err.Error())
 	}
-	defer upperio.Close(r, srcName)
+	defer conn.Close()
 
 	// query connection
+	sess := conn.Raw().(db.Database)
 	coll, err := sess.Collection("dummy_data")
 	res := coll.Find(upperio.Conds(q.GetConds()))
 	var tds []testData

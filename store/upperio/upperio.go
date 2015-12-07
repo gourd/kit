@@ -1,93 +1,34 @@
 package upperio
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-
-	"github.com/gorilla/context"
-	gourdctx "github.com/gourd/kit/context"
+	"github.com/gourd/kit/store"
 	"upper.io/db"
 )
 
-// Upper is the general registry to be used
-// in database session management for upperio database
-var defs map[string]Def
-
-type ctxKey string
-
-func init() {
-	defs = make(map[string]Def)
+// Conn implements store.Conn
+type Conn struct {
+	db db.Database
 }
 
-// Def contains the definition of a database source
-// Has all the parameters needed by db.Database.Open()
-type Def struct {
-	Adapter string
-	URL     db.ConnectionURL
+// Raw implements store.Conn.Raw()
+func (conn *Conn) Raw() interface{} {
+	return conn.db
 }
 
-// Define a database source with name
-func Define(name, adapter string, conn db.ConnectionURL) {
-	defs[name] = Def{
-		Adapter: adapter,
-		URL:     conn,
-	}
+// Close implements store.Conn.Close()
+func (conn *Conn) Close() {
+	conn.db.Close()
 }
 
-// Open a database from existing definitions and error if there is problem
-// or retrieve the previously openned database session
-func Open(r *http.Request, name string) (d db.Database, err error) {
-
-	id := gourdctx.GetRequestID(r)
-	log.Printf("[%s] upperio.Open()", id)
-
-	// try getting from context
-	if cv, ok := context.GetOk(r, ctxKey(name)); ok {
-		if d, ok = cv.(db.Database); ok {
+// Source create store.Source from
+func Source(adapter string, connURL db.ConnectionURL) store.Source {
+	return func() (s store.Conn, err error) {
+		database, err := db.Open(adapter, connURL)
+		if err != nil {
 			return
 		}
-	}
 
-	// find definition
-	if def, ok := defs[name]; ok {
-		// connect
-		d, err = db.Open(def.Adapter, def.URL)
-		if err != nil {
-			// remember the database in context
-			context.Set(r, ctxKey(name), d)
-		}
+		s = &Conn{db: database}
 		return
 	}
-
-	// tell user that the definition doesn't exists
-	err = fmt.Errorf(
-		"Definition for upper.io source \"%s\" not exists", name)
-	return
-}
-
-// Close down an existing database connection
-func Close(r *http.Request, name string) error {
-	var d db.Database
-
-	// try getting from context
-	if cv, ok := context.GetOk(r, ctxKey(name)); ok {
-		if d, ok = cv.(db.Database); ok {
-			// disconnect
-			return d.Close()
-		}
-	}
-
-	// if connection doesn't exists, quit scilently
-	return nil
-}
-
-// MustOpen equals to open except it return only the database and not error.
-// It will panic when encountering error
-func MustOpen(r *http.Request, name string) (d db.Database) {
-	d, err := Open(r, name)
-	if err != nil {
-		panic(err.Error())
-	}
-	return
 }
