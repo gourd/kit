@@ -4,6 +4,8 @@ import (
 	"errors"
 	"path"
 
+	"golang.org/x/net/context"
+
 	"github.com/gourd/kit/oauth2"
 
 	"encoding/json"
@@ -16,7 +18,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/codegangsta/negroni"
 	"github.com/gorilla/pat"
 	"github.com/gourd/kit/store"
 )
@@ -64,10 +65,24 @@ func TestRedirectErr(t *testing.T) {
 
 // creates dummy client and user directly from the stores
 func createDummies(password, redirect string) (*oauth2.Client, *oauth2.User) {
-	r := &http.Request{}
+
+	type tempKey int
+	const (
+		testDB tempKey = iota
+	)
+
+	// define test db
+	factory := store.NewFactory()
+	factory.SetSource(testDB, defaultTestSrc())
+	factory.Set(oauth2.KeyUser, testDB, oauth2.UserStoreProvider)
+	factory.Set(oauth2.KeyClient, testDB, oauth2.ClientStoreProvider)
+	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
+	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
+	ctx := store.WithFactory(context.Background(), factory)
+	defer store.CloseAllIn(ctx)
 
 	// generate dummy user
-	us, err := store.Providers.Store(r, "User")
+	us, err := store.Get(ctx, oauth2.KeyUser)
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +93,7 @@ func createDummies(password, redirect string) (*oauth2.Client, *oauth2.User) {
 	}
 
 	// get related dummy client
-	cs, err := store.Providers.Store(r, "Client")
+	cs, err := store.Get(ctx, oauth2.KeyClient)
 	if err != nil {
 		panic(err)
 	}
@@ -128,10 +143,18 @@ func getCodeHTTP(req *http.Request) (code string, err error) {
 	hc := &http.Client{
 		CheckRedirect: testNoRedirect,
 	}
+
 	_, rerr := hc.Do(req)
-	uerr := rerr.(*url.Error).Err
+	if rerr == nil {
+		err = errors.New("unexpected nil error, ecpecting testRedirectErr")
+		return
+	} else if _, ok := rerr.(*url.Error); !ok {
+		err = fmt.Errorf("unexpected response error %#v", rerr)
+		return
+	}
 
 	// examine error
+	uerr := rerr.(*url.Error).Err
 	switch uerr.(type) {
 	case nil:
 		err = errors.New("unexpected nil error, ecpecting testRedirectErr")
@@ -238,25 +261,33 @@ func testOAuth2Server(baseURL, msg string) http.Handler {
 	// oauth2 manager
 	m := oauth2.NewManager()
 
+	type tempKey int
+	const (
+		testDB tempKey = iota
+	)
+
+	// define store factory for storage
+	factory := store.NewFactory()
+	factory.SetSource(testDB, defaultTestSrc())
+	factory.Set(oauth2.KeyUser, testDB, oauth2.UserStoreProvider)
+	factory.Set(oauth2.KeyClient, testDB, oauth2.ClientStoreProvider)
+	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
+	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
+
 	// add oauth2 endpoints to router
 	// ServeEndpoints bind OAuth2 endpoints to a given base path
 	// Note: this is router specific and need to be generated somehow
-	oauth2.RoutePat(rtr, baseURL, m.GetEndpoints())
+	oauth2.RoutePat(rtr, baseURL, m.GetEndpoints(factory))
 
 	// add a route the requires access
 	rtr.Get("/content", func(w http.ResponseWriter, r *http.Request) {
 
+		ctx := store.WithFactory(context.Background(), factory)
+		ctx = oauth2.ReadTokenAccess(ctx, r)
 		log.Printf("Dummy content page accessed")
 
 		// obtain access
-		a, err := oauth2.GetRequestAccess(r)
-		if err != nil {
-			log.Printf("Dummy content: access error: %s", err.Error())
-			fmt.Fprint(w, "Permission Denied")
-			return
-		}
-
-		// test the access
+		a := oauth2.GetAccess(ctx)
 		if a == nil {
 			fmt.Fprint(w, "Unable to gain Access")
 			return
@@ -266,15 +297,7 @@ func testOAuth2Server(baseURL, msg string) http.Handler {
 		fmt.Fprint(w, msg)
 	})
 
-	// create negroni middleware handler
-	// with middlewares
-	n := negroni.New()
-	n.Use(negroni.Wrap(m.Middleware()))
-
-	// use router in negroni
-	n.UseHandler(rtr)
-
-	return n
+	return rtr
 }
 
 // example client web app in the login
@@ -311,6 +334,7 @@ func TestOAuth2HTTP(t *testing.T) {
 	authEndpoint := ts.URL + path.Join(oauth2URL, "/authorize")
 	tokenEndpoint := ts.URL + path.Join(oauth2URL, "/token")
 	defer ts.Close()
+
 	t.Logf("auth endpoint %#v", authEndpoint)
 
 	// create test client server

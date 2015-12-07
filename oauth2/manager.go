@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"golang.org/x/net/context"
+
 	"github.com/RangelReale/osin"
 	"github.com/gourd/kit/store"
 )
@@ -21,10 +23,6 @@ type Endpoints struct {
 func NewManager() (m *Manager) {
 
 	m = &Manager{}
-
-	// provide stores to auth storage
-	// NOTE: these are independent to router
-	m.UseStorage(DefaultStorage())
 
 	// provide storage to osin server
 	// provide osin server to Manager
@@ -60,23 +58,17 @@ type Manager struct {
 	userFunc      UserFunc
 }
 
-// UseOsin set the OsinServer
+// InitOsin set the OsinServer
 func (m *Manager) InitOsin(cfg *osin.ServerConfig) *Manager {
 	m.osinServer = osin.NewServer(cfg, m.storage)
 	return m
 }
 
-// Storage provides a osin storage interface
-func (m *Manager) UseStorage(s *Storage) *Manager {
-	m.storage = s
-	return m
-}
-
 // GetEndpoints generate endpoints http handers and return
-func (m *Manager) GetEndpoints() *Endpoints {
+func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 
 	// handle login
-	handleLogin := func(ar *osin.AuthorizeRequest, w http.ResponseWriter, r *http.Request) (err error) {
+	handleLogin := func(ar *osin.AuthorizeRequest, ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
 
 		w.Header().Add("Content-Type", "text/html;charset=utf8")
 		log.Printf("handleLogin")
@@ -96,7 +88,7 @@ func (m *Manager) GetEndpoints() *Endpoints {
 			}
 
 			// obtain user store
-			us, err = m.storage.User.Store(r)
+			us, err = store.Get(ctx, KeyUser)
 			if err != nil {
 				log.Printf("Error obtaining user store: %s", err.Error())
 				err = errors.New("Internal Server Error")
@@ -106,8 +98,16 @@ func (m *Manager) GetEndpoints() *Endpoints {
 			// get user by userFunc
 			u, err = m.userFunc(r, us)
 			if err != nil {
-				log.Printf("Error obtaining user: %s", err.Error())
-				err = errors.New("Internal Server Error")
+				serr := store.ExpandError(err)
+				log.Printf("Error obtaining user: %#v", serr.ServerMsg)
+				return
+			}
+
+			// if user is nil, user not found
+			if u == nil {
+				log.Printf("User not found")
+				err = errors.New("user not found")
+				return
 			}
 
 			// if password does not match
@@ -155,14 +155,18 @@ func (m *Manager) GetEndpoints() *Endpoints {
 
 		log.Printf("auth endpoint")
 
+		// per connection based context.Context, with factory
+		ctx := store.WithFactory(context.Background(), factory)
+		defer store.CloseAllIn(ctx)
+
 		srvr := m.osinServer
 		resp := srvr.NewResponse()
-		resp.Storage.(*Storage).SetRequest(r)
+		resp.Storage.(*Storage).SetContext(ctx)
 
 		// handle authorize request with osin
 		if ar := srvr.HandleAuthorizeRequest(resp, r); ar != nil {
 			log.Printf("handle authorize request")
-			if err := handleLogin(ar, w, r); err != nil {
+			if err := handleLogin(ar, ctx, w, r); err != nil {
 				return
 			}
 			log.Printf("OAuth2 Authorize Request: User obtained: %#v", ar.UserData)
@@ -182,9 +186,13 @@ func (m *Manager) GetEndpoints() *Endpoints {
 
 		log.Printf("token endpoint")
 
+		// per connection based context.Context, with factory
+		ctx := store.WithFactory(context.Background(), factory)
+		defer store.CloseAllIn(ctx)
+
 		srvr := m.osinServer
 		resp := srvr.NewResponse()
-		resp.Storage.(*Storage).SetRequest(r)
+		resp.Storage.(*Storage).SetContext(ctx)
 
 		if ar := srvr.HandleAccessRequest(resp, r); ar != nil {
 			// TODO: handle authorization
@@ -203,11 +211,15 @@ func (m *Manager) GetEndpoints() *Endpoints {
 	// information endpoint
 	ep.Info = func(w http.ResponseWriter, r *http.Request) {
 
+		// per connection based context.Context, with factory
+		ctx := store.WithFactory(context.Background(), factory)
+		defer store.CloseAllIn(ctx)
+
 		log.Printf("information endpoint")
 		srvr := m.osinServer
 
 		resp := srvr.NewResponse()
-		resp.Storage.(*Storage).SetRequest(r)
+		resp.Storage.(*Storage).SetContext(ctx)
 		defer resp.Close()
 
 		if ir := srvr.HandleInfoRequest(resp, r); ir != nil {
@@ -226,7 +238,7 @@ func (m *Manager) SetLoginFormFunc(f LoginFormFunc) {
 	m.loginFormFunc = f
 }
 
-// SetLoginParser sets the parser for login request.
+// SetUserFunc sets the parser for login request.
 // Will be called when endpoint POST request
 //
 // Manager will then search user with `idField` equals to `id`.
@@ -235,11 +247,4 @@ func (m *Manager) SetLoginFormFunc(f LoginFormFunc) {
 // to see if the password is correct
 func (m *Manager) SetUserFunc(f UserFunc) {
 	m.userFunc = f
-}
-
-// Middleware returns *Middleware with the current storage
-func (m *Manager) Middleware() *Middleware {
-	return &Middleware{
-		storage: m.storage,
-	}
 }

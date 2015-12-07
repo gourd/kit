@@ -6,14 +6,16 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/gourd/kit/store"
 	"github.com/gourd/kit/store/upperio"
 	"upper.io/db/sqlite"
 )
 
+const dbpath = "_test/sqlite3.db"
+
 func init() {
 
 	// find sqlite3 command
-	dbpath := "_test/sqlite3.db"
 	sqlite3, err := exec.LookPath("sqlite3")
 	if err != nil {
 		log.Fatalf("error finding sqlite3 in system: %#v", err.Error())
@@ -41,9 +43,11 @@ func init() {
 
 		log.Fatalf("Failed to run sqlite command")
 	}
+}
 
-	// define test db
-	upperio.Define("default", sqlite.Adapter, sqlite.ConnectionURL{
-		Database: dbpath,
-	})
+func defaultTestSrc() store.Source {
+	return upperio.Source(
+		sqlite.Adapter, sqlite.ConnectionURL{
+			Database: dbpath,
+		})
 }

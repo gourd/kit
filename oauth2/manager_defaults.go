@@ -15,10 +15,6 @@ import (
 // DefaultStorage returns Storage that attachs to default stores
 func DefaultStorage() (s *Storage) {
 	s = &Storage{}
-	s.UseClientFrom(store.Providers.MustGet("Client"))
-	s.UseAuthFrom(store.Providers.MustGet("AuthorizeData"))
-	s.UseAccessFrom(store.Providers.MustGet("AccessData"))
-	s.UseUserFrom(store.Providers.MustGet("User"))
 	return
 }
 
@@ -77,7 +73,7 @@ body, html { margin: 0; font-size: 18pt; background-color: #EEE; }
 </html>
 `
 
-// DefaultLoginParser is the default parser of login HTTP request
+// NewUserFunc creates the default parser of login HTTP request
 func NewUserFunc(idName string) UserFunc {
 	return func(r *http.Request, us store.Store) (ou OAuth2User, err error) {
 
@@ -100,9 +96,10 @@ func NewUserFunc(idName string) UserFunc {
 		// get user from database
 		u := us.AllocEntity()
 		err = us.One(c, u)
+
 		if err != nil {
-			log.Printf("Error searching user \"%s\": %s", id, err.Error())
-			err = errors.New("Internal Server Error")
+			serr := store.ExpandError(err)
+			log.Printf("Error searching user \"%s\": %s", id, serr.ServerMsg)
 			return
 		}
 
@@ -126,6 +123,7 @@ func NewUserFunc(idName string) UserFunc {
 	}
 }
 
+// NewLoginFormFunc creates a LoginFormFunc from given template
 func NewLoginFormFunc(tpl string) LoginFormFunc {
 
 	// compile template for login form

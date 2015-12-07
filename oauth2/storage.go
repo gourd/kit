@@ -4,71 +4,53 @@ import (
 	"log"
 	"net/http"
 
+	"golang.org/x/net/context"
+
 	"github.com/RangelReale/osin"
 	"github.com/gourd/kit/store"
 )
 
+type storeKey int
+
+// Keys for Storage to access different stores
+// from provided context
+const (
+	KeyClient storeKey = iota
+	KeyAuth
+	KeyAccess
+	KeyUser
+)
+
 // Storage implements osin.Storage
 type Storage struct {
-	r      *http.Request
-	Client store.Provider
-	Auth   store.Provider
-	Access store.Provider
-	User   store.Provider
+	ctx context.Context
 }
 
-// SetRequest set the request
-func (storage *Storage) SetRequest(r *http.Request) *Storage {
-	storage.r = r
+// SetContext set the context of the storage clone
+func (storage *Storage) SetContext(ctx context.Context) *Storage {
+	storage.ctx = ctx
 	return storage
 }
 
-// UseClientFrom set the Client provider
-func (storage *Storage) UseClientFrom(p store.Provider) *Storage {
-	storage.Client = p
-	return storage
-}
-
-// UseAuthFrom set the Auth provider
-func (storage *Storage) UseAuthFrom(p store.Provider) *Storage {
-	storage.Auth = p
-	return storage
-}
-
-// UseAccessFrom set the Access provider
-func (storage *Storage) UseAccessFrom(p store.Provider) *Storage {
-	storage.Access = p
-	return storage
-}
-
-// UseUserFrom set the User provider
-func (storage *Storage) UseUserFrom(p store.Provider) *Storage {
-	storage.User = p
-	return storage
-}
-
-// Clone the storage
+// Clone implements osin.Storage.Clone
 func (storage *Storage) Clone() (c osin.Storage) {
-	c = &Storage{
-		Client: storage.Client,
-		Auth:   storage.Auth,
-		Access: storage.Access,
-		User:   storage.User,
-	}
+	c = &Storage{}
 	return
 }
 
-// Close the connection to the storage
+// Close implements osin.Storage.Close
 func (storage *Storage) Close() {
-	// placeholder now, will revisit when doing mongodb
+	// Close is not functional at All.
+	// Should use store.CloseAllIn to wrap up
+	// database connections.
 }
 
-// GetClient loads the client by id (client_id)
+// GetClient implements osin.Storage.GetClient
 func (storage *Storage) GetClient(id string) (c osin.Client, err error) {
 
 	log.Printf("GetClient %s", id)
 
-	srv, err := storage.Client.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyClient)
 	if err != nil {
 		log.Printf("Unable to get client store")
 		return
@@ -100,7 +82,7 @@ func (storage *Storage) SaveAuthorize(d *osin.AuthorizeData) (err error) {
 
 	log.Printf("SaveAuthorize %v", d)
 
-	srv, err := storage.Auth.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAuth)
 	if err != nil {
 		return
 	}
@@ -128,7 +110,7 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 	log.Printf("LoadAuthorize %s", code)
 
 	// loading osin using osin storage
-	srv, err := storage.Auth.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAuth)
 	if err != nil {
 		return
 	}
@@ -161,7 +143,7 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 
 	// load user data here
 	if e.UserId != "" {
-		userStore, err := storage.User.Store(storage.r)
+		userStore, err := store.Get(storage.ctx, KeyUser)
 		if err != nil {
 			return d, err
 		}
@@ -179,7 +161,7 @@ func (storage *Storage) RemoveAuthorize(code string) (err error) {
 
 	log.Printf("RemoveAuthorize %s", code)
 
-	srv, err := storage.Auth.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAuth)
 	if err != nil {
 		return
 	}
@@ -195,7 +177,7 @@ func (storage *Storage) RemoveAuthorize(code string) (err error) {
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
 func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 
-	srv, err := storage.Access.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
 		return
 	}
@@ -234,7 +216,7 @@ func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error)
 
 	log.Printf("LoadAccess %v", token)
 
-	srv, err := storage.Access.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
 		return
 	}
@@ -306,7 +288,7 @@ func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error)
 
 		// load user data here
 		if e.UserId != "" {
-			userStore, err := storage.User.Store(storage.r)
+			userStore, err := store.Get(storage.ctx, KeyUser)
 			if err != nil {
 				return err
 			}
@@ -331,7 +313,7 @@ func (storage *Storage) RemoveAccess(token string) (err error) {
 
 	log.Printf("RemoveAccess %v", token)
 
-	srv, err := storage.Access.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
 		return
 	}
@@ -350,7 +332,7 @@ func (storage *Storage) LoadRefresh(token string) (d *osin.AccessData, err error
 
 	log.Printf("LoadRefresh %v", token)
 
-	srv, err := storage.Access.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
 		return
 	}
@@ -378,7 +360,7 @@ func (storage *Storage) RemoveRefresh(token string) (err error) {
 
 	log.Printf("RemoveRefresh %v", token)
 
-	srv, err := storage.Access.Store(storage.r)
+	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
 		return
 	}
