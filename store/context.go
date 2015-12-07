@@ -14,11 +14,11 @@ const (
 	DefaultSrc
 )
 
-// WithStores create a Stores and add to the context
-func WithStores(parent context.Context, defs Defs) context.Context {
+// WithFactory attachs a factory to the context
+func WithFactory(parent context.Context, factory Factory) context.Context {
 
 	return context.WithValue(parent,
-		storesKey, &stores{defs, make(map[interface{}]Conn)})
+		storesKey, &stores{factory, make(map[interface{}]Conn)})
 }
 
 // Get try to connect to a store with provided source
@@ -65,15 +65,15 @@ type Stores interface {
 }
 
 type stores struct {
-	defs  Defs
-	conns map[interface{}]Conn
+	factory Factory
+	conns   map[interface{}]Conn
 }
 
 // Connect connects gets a connection to the key
 func (sts *stores) Get(key interface{}) (s Store, err error) {
 
 	// find provider
-	srcKey, provider := sts.defs.Get(key)
+	srcKey, provider := sts.factory.Get(key)
 	if srcKey == nil && provider == nil {
 		err = fmt.Errorf("Store provider not found")
 		return
@@ -83,7 +83,7 @@ func (sts *stores) Get(key interface{}) (s Store, err error) {
 	var conn Conn
 	var ok bool
 	if conn, ok = sts.conns[srcKey]; !ok {
-		source := sts.defs.GetSource(srcKey)
+		source := sts.factory.GetSource(srcKey)
 		conn, err = source()
 	}
 	if err != nil {

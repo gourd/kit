@@ -61,14 +61,14 @@ func TestSetGet(t *testing.T) {
 			return
 		}
 
-		defs := store.NewDefs()
-		defs.SetSource(srcKey, dummySrc)
-		defs.Set(key, srcKey, func(sess interface{}) (s store.Store, err error) {
+		factory := store.NewFactory()
+		factory.SetSource(srcKey, dummySrc)
+		factory.Set(key, srcKey, func(sess interface{}) (s store.Store, err error) {
 			err = fmt.Errorf("%s", sess)
 			return
 		})
 
-		return store.WithStores(context.Background(), defs)
+		return store.WithFactory(context.Background(), factory)
 
 	}(msg, ch)
 

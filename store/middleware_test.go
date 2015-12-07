@@ -59,14 +59,14 @@ func TestMiddleware(t *testing.T) {
 			return
 		}
 
-		defs := store.NewDefs()
-		defs.SetSource(srcKey, dummySrc)
-		defs.Set(key, srcKey, func(sess interface{}) (s store.Store, err error) {
+		factory := store.NewFactory()
+		factory.SetSource(srcKey, dummySrc)
+		factory.Set(key, srcKey, func(sess interface{}) (s store.Store, err error) {
 			err = fmt.Errorf("%s", sess)
 			return
 		})
 
-		return store.Middleware(defs)
+		return store.Middleware(factory)
 
 	}(msg, ch)
 

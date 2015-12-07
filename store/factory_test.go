@@ -7,15 +7,15 @@ import (
 	"github.com/gourd/kit/store"
 )
 
-func TestDefs_source(t *testing.T) {
+func TestFactory_source(t *testing.T) {
 	dummySrc1 := func() (conn store.Conn, err error) {
 		err = fmt.Errorf("hello dummySrc")
 		return
 	}
 
-	defs := store.NewDefs()
-	defs.SetSource(store.DefaultSrc, dummySrc1)
-	dummySrc2 := defs.GetSource(store.DefaultSrc)
+	factory := store.NewFactory()
+	factory.SetSource(store.DefaultSrc, dummySrc1)
+	dummySrc2 := factory.GetSource(store.DefaultSrc)
 
 	if _, err1 := dummySrc1(); err1 == nil {
 		t.Errorf("unexpected nil value")
@@ -26,7 +26,7 @@ func TestDefs_source(t *testing.T) {
 	}
 }
 
-func TestDefs_store(t *testing.T) {
+func TestFactory_store(t *testing.T) {
 	dummyPrvdr1 := func(sess interface{}) (s store.Store, err error) {
 		err = fmt.Errorf("hello dummyPrvdr")
 		return
@@ -35,9 +35,9 @@ func TestDefs_store(t *testing.T) {
 	type tempKey int
 	var srcKey, storeKey tempKey = 0, 1
 
-	defs := store.NewDefs()
-	defs.Set(storeKey, srcKey, dummyPrvdr1)
-	_, dummyPrvdr2 := defs.Get(storeKey)
+	factory := store.NewFactory()
+	factory.Set(storeKey, srcKey, dummyPrvdr1)
+	_, dummyPrvdr2 := factory.Get(storeKey)
 
 	if _, err1 := dummyPrvdr1(nil); err1 == nil {
 		t.Errorf("unexpected nil value")
