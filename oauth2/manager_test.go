@@ -283,7 +283,7 @@ func testOAuth2Server(baseURL, msg string) http.Handler {
 	rtr.Get("/content", func(w http.ResponseWriter, r *http.Request) {
 
 		ctx := store.WithFactory(context.Background(), factory)
-		ctx = oauth2.ReadTokenAccess(ctx, r)
+		ctx = oauth2.LoadTokenAccess(oauth2.UseToken(ctx, r))
 		log.Printf("Dummy content page accessed")
 
 		// obtain access

@@ -173,7 +173,7 @@ func TestGetAccess_Session(t *testing.T) {
 	// middleware routine: WithAccess set context with proper token passed
 	// test getting AccessData from supposed context with AccessData
 	r := getContentRequest(token, contentURL)
-	ctx = oauth2.ReadTokenAccess(ctx, r)
+	ctx = oauth2.LoadTokenAccess(oauth2.UseToken(ctx, r))
 	access := oauth2.GetAccess(ctx)
 	if access == nil {
 		t.Errorf("expected *AccessData, got %#v", access)
