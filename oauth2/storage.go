@@ -177,6 +177,8 @@ func (storage *Storage) RemoveAuthorize(code string) (err error) {
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
 func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 
+	log.Printf("SaveAccess %#v", ad)
+
 	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
 		return
@@ -209,6 +211,76 @@ func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 	return
 }
 
+// loadAccessSupp loads supplementary data onto an *AccessData
+func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
+
+	// load client here
+	var ok bool
+	cli, err := storage.GetClient(e.ClientId)
+	if err != nil {
+		return
+	} else if e.Client, ok = cli.(*Client); !ok {
+		err = store.Error(http.StatusInternalServerError,
+			"Internal Server Error")
+		log.Printf("Unable to cast client into Client type: %#v", cli)
+		return
+	}
+	e.ClientId = e.Client.GetId()
+
+	// load authdata here
+	if e.AuthorizeCode != "" {
+		a, err := storage.LoadAuthorize(e.AuthorizeCode)
+		if err != nil {
+			// ignore "Not Found"
+			code, msg := store.ParseError(err)
+			if code == 404 {
+				log.Printf("Failed to load Auth: %#v. Ignore", msg)
+			} else {
+				log.Printf("Failed to load Auth: %#v", msg)
+				return err
+			}
+		} else {
+			log.Printf("Auth data found")
+			ad := &AuthorizeData{}
+			if err = ad.ReadOsin(a); err != nil {
+				return err
+			}
+			e.AuthorizeData = ad
+		}
+	}
+
+	// load previous access here
+	if e.PrevAccessToken != "" {
+		// temp: not load
+		// TODO: store as JSON string and load by JSON decode
+		/*
+			a, err := storage.LoadAccess(e.PrevAccessToken)
+			if err != nil {
+				return err
+			}
+			ad := &AccessData{}
+			if err = ad.ReadOsin(a); err != nil {
+				return err
+			}
+			e.AccessData = ad
+		*/
+	}
+
+	// load user data here
+	if e.UserId != "" {
+		userStore, err := store.Get(storage.ctx, KeyUser)
+		if err != nil {
+			return err
+		}
+		user := &User{}
+		userStore.One(store.NewConds().Add("id", e.UserId), user)
+		e.UserData = user
+	}
+
+	return
+
+}
+
 // LoadAccess retrieves access data by token. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
@@ -236,71 +308,7 @@ func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error)
 	}
 
 	// load supplementary data
-	err = func(e *AccessData) (err error) {
-
-		// load client here
-		var ok bool
-		cli, err := storage.GetClient(e.ClientId)
-		if err != nil {
-			return
-		} else if e.Client, ok = cli.(*Client); !ok {
-			err = store.Error(http.StatusInternalServerError,
-				"Internal Server Error")
-			log.Printf("Unable to cast client into Client type: %#v", cli)
-			return
-		}
-		e.ClientId = e.Client.GetId()
-
-		// load authdata here
-		if e.AuthorizeCode != "" {
-			a, err := storage.LoadAuthorize(e.AuthorizeCode)
-			if err != nil {
-				// ignore "Not Found"
-				code, msg := store.ParseError(err)
-				if code == 404 {
-					log.Printf("Failed to load Auth: %#v. Ignore", msg)
-				} else {
-					log.Printf("Failed to load Auth: %#v", msg)
-					return err
-				}
-			} else {
-				log.Printf("Auth data found")
-				ad := &AuthorizeData{}
-				if err = ad.ReadOsin(a); err != nil {
-					return err
-				}
-				e.AuthorizeData = ad
-			}
-		}
-
-		// load previous access here
-		if e.PrevAccessToken != "" {
-			a, err := storage.LoadAccess(e.PrevAccessToken)
-			if err != nil {
-				return err
-			}
-			ad := &AccessData{}
-			if err = ad.ReadOsin(a); err != nil {
-				return err
-			}
-			e.AccessData = ad
-		}
-
-		// load user data here
-		if e.UserId != "" {
-			userStore, err := store.Get(storage.ctx, KeyUser)
-			if err != nil {
-				return err
-			}
-			user := &User{}
-			userStore.One(store.NewConds().Add("id", e.UserId), user)
-			e.UserData = user
-		}
-
-		return
-	}(e)
-
-	if err != nil {
+	if err = storage.loadAccessSupp(e); err != nil {
 		return
 	}
 
@@ -348,6 +356,11 @@ func (storage *Storage) LoadRefresh(token string) (d *osin.AccessData, err error
 	} else if e == nil {
 		err = store.Error(http.StatusNotFound,
 			"AccessData not found for the refresh token")
+		return
+	}
+
+	// load supplementary data
+	if err = storage.loadAccessSupp(e); err != nil {
 		return
 	}
 

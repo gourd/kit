@@ -192,9 +192,28 @@ func getTokenRequest(c *oauth2.Client, code, tokenURL, redirect string) *http.Re
 	return req
 }
 
+// getRefreshRequest generates request which client app
+// send to oauth2 server for the token
+func getRefreshRequest(c *oauth2.Client, refreshToken, tokenURL string) *http.Request {
+	// build user request to token endpoint
+	form := &url.Values{}
+	form.Add("client_id", c.GetId())
+	form.Add("client_secret", c.Secret)
+	form.Add("grant_type", "refresh_token")
+	form.Add("refresh_token", refreshToken)
+	req, err := http.NewRequest("POST",
+		tokenURL,
+		strings.NewReader(form.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		panic(err)
+	}
+	return req
+}
+
 // getTokenHTTP runs the getTokenRequest with actual
 // HTTP client and parse the result as token, error
-func getTokenHTTP(req *http.Request) (token string, err error) {
+func getTokenHTTP(req *http.Request) (token, refresh string, err error) {
 
 	log.Printf("Test retrieving token ====")
 
@@ -205,16 +224,44 @@ func getTokenHTTP(req *http.Request) (token string, err error) {
 		err = fmt.Errorf("Failed run the request: %s", err.Error())
 	}
 
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = fmt.Errorf("Failed read the response body: %s", err.Error())
+	}
+
+	log.Printf("raw response: %s", b)
+
 	// read token from token endpoint response (json)
-	bodyDecoded := make(map[string]string)
-	dec := json.NewDecoder(resp.Body)
-	dec.Decode(&bodyDecoded)
+	bodyDecoded := make(map[string]interface{})
+	json.Unmarshal(b, &bodyDecoded)
 
 	log.Printf("Response Body: %#v", bodyDecoded)
-	var ok bool
-	if token, ok = bodyDecoded["access_token"]; !ok {
-		err = fmt.Errorf(
-			"Unable to parse access_token: %s", err.Error())
+
+	if v, ok := bodyDecoded["error"]; ok {
+		errType := v.(string)
+		if errDesc, ok := bodyDecoded["error_description"]; ok {
+			// do nothing
+			err = fmt.Errorf("oauth2 error: %s (%s)", errType, errDesc)
+			return
+		}
+		err = fmt.Errorf("oauth2 error: %s", errType)
+		return
+	}
+
+	if v, ok := bodyDecoded["access_token"]; !ok {
+		err = fmt.Errorf("unable to find access_token in response")
+		return
+	} else if token, ok = v.(string); !ok {
+		err = fmt.Errorf("access_token is not string")
+		return
+	}
+
+	if v, ok := bodyDecoded["refresh_token"]; !ok {
+		err = fmt.Errorf("unable to find refresh_token in response")
+		return
+	} else if refresh, ok = v.(string); !ok {
+		err = fmt.Errorf("refresh_token is not string")
+		return
 	}
 	return
 }
@@ -353,11 +400,20 @@ func TestOAuth2HTTP(t *testing.T) {
 
 	// retrieve token from token endpoint
 	// get response from client web app redirect uri
-	token, err := getTokenHTTP(getTokenRequest(c, code, tokenEndpoint, tcs.URL+tcspath))
+	token, refresh, err := getTokenHTTP(getTokenRequest(c, code, tokenEndpoint, tcs.URL+tcspath))
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
+
+	// try to refresh token
+	log.Printf("[!!!] refresh token test!!! refresh_token=%s token=%s", refresh, token)
+	token, refresh, err = getTokenHTTP(getRefreshRequest(c, refresh, tokenEndpoint))
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	log.Printf("[!!!] refresh token success: new refresh_token=%s token=%s", refresh, token)
 
 	// retrieve a testing content path
 	body, err := func(token, contentURL string) (body string, err error) {
