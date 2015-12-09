@@ -12,34 +12,34 @@ import (
 type AuthorizeData struct {
 
 	// Authorize Data Id
-	Id string `db:"id,omitempty"`
+	Id string `db:"id,omitempty" json:"id"`
 
 	// Client Id the data is linked to
-	ClientId string `db:"client_id"`
+	ClientId string `db:"client_id" json:"client_id"`
 
 	// Client information
-	Client *Client `db:"-"`
+	Client *Client `db:"-" json:"-"`
 
 	// Authorization code
-	Code string `db:"code"`
+	Code string `db:"code" json:"code"`
 
 	// Token expiration in seconds
-	ExpiresIn int32 `db:"expires_in"`
+	ExpiresIn int32 `db:"expires_in" json:"expires_in"`
 
 	// Requested scope
-	Scope string `db:"scope"`
+	Scope string `db:"scope" json:"scope"`
 
 	// Redirect Uri from request
-	RedirectUri string `db:"redirect_uri"`
+	RedirectUri string `db:"redirect_uri" json:"redirect_uri"`
 
 	// State data from request
-	State string `db:"state"`
+	State string `db:"state" json:"state"`
 
 	// Date created
-	CreatedAt time.Time `db:"created_at"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
 
 	// User Id the data is linked to
-	UserId string `db:"user_id"`
+	UserId string `db:"user_id" json:"user_id"`
 
 	// Data to be passed to storage. Not used by the osin library.
 	UserData interface{} `db:"-"`
@@ -59,6 +59,8 @@ func (d *AuthorizeData) ToOsin() (od *osin.AuthorizeData) {
 	return
 }
 
+// ReadOsin reads a *osin.AuthorizeData, takes its value
+// then set to itself
 func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) error {
 	var ok bool
 	if od.Client == nil {
@@ -66,6 +68,7 @@ func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) error {
 	} else if d.Client, ok = od.Client.(*Client); !ok {
 		return fmt.Errorf("osin client is not of Client type: %#v", od)
 	}
+	d.ClientId = od.Client.GetId()
 	d.Code = od.Code
 	d.ExpiresIn = od.ExpiresIn
 	d.Scope = od.Scope

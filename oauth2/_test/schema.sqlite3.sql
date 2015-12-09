@@ -73,10 +73,10 @@ DROP TABLE IF EXISTS oauth2_access;
 CREATE TABLE oauth2_access (
   `id`                TEXT PRIMARY KEY,
   `client_id`         TEXT,
-  `auth_code`         TEXT,
+  `auth_data_json`    TEXT,
   `access_token`      TEXT,
-  `prev_access_token` TEXT,
   `refresh_token`     TEXT,
+  `access_data_json`  TEXT,
   `expires_in`        INTEGER,
   `scope`             TEXT,
   `redirect_uri`      TEXT,

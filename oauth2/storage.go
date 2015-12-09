@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -195,16 +196,6 @@ func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 	// store client id with access in database
 	e.ClientId = e.Client.GetId()
 
-	// store authorize id with access in database
-	if ad.AuthorizeData != nil {
-		e.AuthorizeCode = ad.AuthorizeData.Code
-	}
-
-	// store previous access id with access in database
-	if ad.AccessData != nil {
-		e.PrevAccessToken = ad.AccessData.AccessToken
-	}
-
 	// create in database
 	err = srv.Create(store.NewConds(), e)
 	log.Printf("SaveAccess last error: %#v", err)
@@ -227,43 +218,18 @@ func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
 	}
 	e.ClientId = e.Client.GetId()
 
-	// load authdata here
-	if e.AuthorizeCode != "" {
-		a, err := storage.LoadAuthorize(e.AuthorizeCode)
-		if err != nil {
-			// ignore "Not Found"
-			code, msg := store.ParseError(err)
-			if code == 404 {
-				log.Printf("Failed to load Auth: %#v. Ignore", msg)
-			} else {
-				log.Printf("Failed to load Auth: %#v", msg)
-				return err
-			}
-		} else {
-			log.Printf("Auth data found")
-			ad := &AuthorizeData{}
-			if err = ad.ReadOsin(a); err != nil {
-				return err
-			}
-			e.AuthorizeData = ad
-		}
+	// unserialize previous AuthorizeData here
+	if e.AuthorizeDataJSON != "" {
+		ad := &AuthorizeData{}
+		json.Unmarshal([]byte(e.AuthorizeDataJSON), ad)
+		e.AuthorizeData = ad
 	}
 
-	// load previous access here
-	if e.PrevAccessToken != "" {
-		// temp: not load
-		// TODO: store as JSON string and load by JSON decode
-		/*
-			a, err := storage.LoadAccess(e.PrevAccessToken)
-			if err != nil {
-				return err
-			}
-			ad := &AccessData{}
-			if err = ad.ReadOsin(a); err != nil {
-				return err
-			}
-			e.AccessData = ad
-		*/
+	// unserialize previous AccessData here
+	if e.AccessDataJSON != "" {
+		ad := &AccessData{}
+		json.Unmarshal([]byte(e.AccessDataJSON), ad)
+		e.AccessData = ad
 	}
 
 	// load user data here

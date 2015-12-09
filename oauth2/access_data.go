@@ -2,6 +2,7 @@
 package oauth2
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -12,46 +13,46 @@ import (
 type AccessData struct {
 
 	// Id is the primary key of AccessData
-	Id string `db:"id,omitempty"`
+	Id string `db:"id,omitempty" json:"id"`
 
 	// ClientId is the client which this AccessData is linked to
-	ClientId string `db:"client_id"`
+	ClientId string `db:"client_id" json:"client_id"`
 
 	// Client information
-	Client *Client `db:"-"`
-
-	// Authorize id
-	AuthorizeCode string `db:"auth_code"`
+	Client *Client `db:"-" json:"-"`
 
 	// Authorize data, for authorization code
-	AuthorizeData *AuthorizeData `db:"-"`
+	AuthorizeData *AuthorizeData `db:"-" json:"-"`
 
-	// Previous access data id
-	PrevAccessToken string `db:"prev_access_token"`
+	// Authorize data, for authorization code
+	AuthorizeDataJSON string `db:"auth_data_json" json:"-"`
 
 	// Previous access data, for refresh token
-	AccessData *AccessData `db:"-"`
+	AccessData *AccessData `db:"-" json:"-"`
+
+	// AccessDataJSON stores the previous access data in JSON string
+	AccessDataJSON string `db:"access_data_json" json:"-"`
 
 	// Access token
-	AccessToken string `db:"access_token"`
+	AccessToken string `db:"access_token" json:"access_token"`
 
 	// Refresh Token. Can be blank
-	RefreshToken string `db:"refresh_token"`
+	RefreshToken string `db:"refresh_token" json:"refresh_token"`
 
 	// Token expiration in seconds
-	ExpiresIn int32 `db:"expires_in"`
+	ExpiresIn int32 `db:"expires_in" json:"expires_in"`
 
 	// Requested scope
-	Scope string `db:"scope"`
+	Scope string `db:"scope" json:"scope"`
 
-	// Redirect Uri from request
-	RedirectUri string `db:"redirect_uri"`
+	// RedirectUri from request
+	RedirectUri string `db:"redirect_uri" json:"redirect_uri"`
 
 	// Date created
-	CreatedAt time.Time `db:"created_at"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
 
 	// User Id the data is linked to
-	UserId string `db:"user_id"`
+	UserId string `db:"user_id" json:"user_id"`
 
 	// Data to be passed to storage. Not used by the osin library.
 	UserData interface{} `db:"-"`
@@ -68,6 +69,9 @@ func (d *AccessData) ToOsin() (od *osin.AccessData) {
 	od.RedirectUri = d.RedirectUri
 	od.CreatedAt = d.CreatedAt
 	od.UserData = d.UserData
+
+	// TODO: do we need to do json.Unmarshal here for
+	//       AuthorizeData and AccessData?? need to find out
 
 	// indirect parameters
 	if d.AuthorizeData != nil {
@@ -105,15 +109,22 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) error {
 		}
 	}
 	if od.AuthorizeData != nil {
+		// read the AuthorizeData and store as JSON
 		oaud := &AuthorizeData{}
 		oaud.ReadOsin(od.AuthorizeData)
+		b, _ := json.Marshal(d.AuthorizeData)
+		d.AuthorizeDataJSON = string(b)
 		d.AuthorizeData = oaud
+
+		// remember the user_id
 		d.UserId = oaud.UserId
 	}
 	if od.AccessData != nil {
+		if *od == *od.AccessData {
+			panic("recursive referencing")
+		}
 		oacd := &AccessData{}
 		oacd.ReadOsin(od.AccessData)
-		d.AccessData = oacd
 	}
 	if od.UserData != nil {
 		user := od.UserData.(*User) // presume *User here
