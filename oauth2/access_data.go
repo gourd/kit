@@ -24,13 +24,13 @@ type AccessData struct {
 	AuthorizeData *AuthorizeData `db:"-" json:"-"`
 
 	// Authorize data, for authorization code
-	AuthorizeDataJSON string `db:"auth_data_json" json:"-"`
+	AuthorizeDataJSON string `db:"auth_data_json,omitempty" json:"-"`
 
 	// Previous access data, for refresh token
 	AccessData *AccessData `db:"-" json:"-"`
 
 	// AccessDataJSON stores the previous access data in JSON string
-	AccessDataJSON string `db:"access_data_json" json:"-"`
+	AccessDataJSON string `db:"access_data_json,omitempty" json:"-"`
 
 	// Access token
 	AccessToken string `db:"access_token" json:"access_token"`
