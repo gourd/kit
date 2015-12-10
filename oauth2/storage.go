@@ -196,9 +196,40 @@ func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 	// store client id with access in database
 	e.ClientId = e.Client.GetId()
 
+	// if AuthorizeData is set, store as JSON
+	if ad.AuthorizeData != nil {
+		var b []byte
+		authData := &AuthorizeData{}
+		if err = authData.ReadOsin(ad.AuthorizeData); err != nil {
+			return
+		}
+		if b, err = json.Marshal(authData); err != nil {
+			return
+		}
+		e.AuthorizeDataJSON = string(b)
+	}
+
+	// if AccessData is set, store as JSON
+	if ad.AccessData != nil {
+		var b []byte
+		accessData := &AccessData{}
+		if err = accessData.ReadOsin(ad.AccessData); err != nil {
+			return
+		}
+		if accessData.AccessData != nil {
+			// forget data of too long ago
+			accessData.AccessData = nil
+		}
+		if b, err = json.Marshal(accessData); err != nil {
+			return
+		}
+		e.AccessDataJSON = string(b)
+	}
+
 	// create in database
-	err = srv.Create(store.NewConds(), e)
-	log.Printf("SaveAccess last error: %#v", err)
+	if err = srv.Create(store.NewConds(), e); err != nil {
+		log.Printf("SaveAccess error: %#v", err.Error())
+	}
 	return
 }
 

@@ -19,13 +19,13 @@ type OAuth2User interface {
 
 // User of the API server
 type User struct {
-	Id       string    `db:"id,omitempty"`
-	Username string    `db:"username"`
-	Email    string    `db:"email"`
-	Password string    `db:"password"`
-	Name     string    `db:"name"`
-	Created  time.Time `db:"created"`
-	Updated  time.Time `db:"updated"`
+	Id       string    `db:"id,omitempty" json:"id"`
+	Username string    `db:"username" json:"username"`
+	Email    string    `db:"email" json:"email"`
+	Password string    `db:"password" json:"-"`
+	Name     string    `db:"name" json:"name"`
+	Created  time.Time `db:"created" json:"created"`
+	Updated  time.Time `db:"updated" json:"updated"`
 }
 
 // PasswordIs matches the hash with database stored password
@@ -41,4 +41,31 @@ func (u *User) Hash(password string) string {
 	h := md5.New()
 	io.WriteString(h, password)
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// UserDataID reads UserData field for AccessData / AuthorizeData
+// then retrieve the ID string or return error
+func UserDataID(UserData interface{}) (strID string, err error) {
+
+	switch UserData.(type) {
+	case *User:
+		user := UserData.(*User)
+		strID = user.Id
+		return
+	case map[string]interface{}:
+		vmap := UserData.(map[string]interface{})
+		if id, ok := vmap["id"]; !ok {
+			err = fmt.Errorf(
+				`.UserData["id"] not found (.UserData=%#v)`, vmap)
+			return
+		} else if strID, ok = id.(string); !ok {
+			err = fmt.Errorf(
+				`.UserData["id"] is not string (%#v)`, vmap)
+			return
+		}
+	}
+
+	err = fmt.Errorf(
+		"unexpected .UserData type %#v", UserData)
+	return
 }

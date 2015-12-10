@@ -12,7 +12,7 @@ import (
 type AuthorizeData struct {
 
 	// Authorize Data Id
-	Id string `db:"id,omitempty" json:"id"`
+	Id string `db:"id,omitempty" json:"id,omitempty"`
 
 	// Client Id the data is linked to
 	ClientId string `db:"client_id" json:"client_id"`
@@ -61,12 +61,13 @@ func (d *AuthorizeData) ToOsin() (od *osin.AuthorizeData) {
 
 // ReadOsin reads a *osin.AuthorizeData, takes its value
 // then set to itself
-func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) error {
+func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) (err error) {
 	var ok bool
 	if od.Client == nil {
 		// skip for now
 	} else if d.Client, ok = od.Client.(*Client); !ok {
-		return fmt.Errorf("osin client is not of Client type: %#v", od)
+		err = fmt.Errorf("osin client is not of Client type: %#v", od)
+		return
 	}
 	d.ClientId = od.Client.GetId()
 	d.Code = od.Code
@@ -77,8 +78,9 @@ func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) error {
 	d.CreatedAt = od.CreatedAt
 	d.UserData = od.UserData
 	if d.UserData != nil {
-		user := od.UserData.(*User) // presume *User here
-		d.UserId = user.Id
+		if d.UserId, err = UserDataID(d.UserData); err != nil {
+			return
+		}
 	}
 	return nil
 }

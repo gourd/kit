@@ -2,6 +2,7 @@ package oauth2_test
 
 import (
 	"errors"
+	"io"
 	"path"
 
 	"golang.org/x/net/context"
@@ -267,19 +268,26 @@ func getContentRequest(token, contentURL string) *http.Request {
 // getContentHTTP runs the getContentRequest with actual
 // HTTP client and parse the result as body, error
 func getContentHTTP(r *http.Request) (body string, err error) {
+
+	log.Printf("request URL: %#v", r.URL)
+
 	// new http client to emulate user request
 	hc := &http.Client{}
 	resp, err := hc.Do(r)
-	if err != nil {
+	if err != nil && err != io.EOF  {
+		log.Printf("err 1: %#v", err)
 		err = fmt.Errorf("Failed run the request: %s", err.Error())
 		return
 	}
+	err = nil // in case EOF
 
 	raw, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+	if err != nil && err != io.EOF {
+		log.Printf("err 2: %#v", err)
 		err = fmt.Errorf("Failed to read body: %s", err.Error())
 		return
 	}
+	err = nil // in case EOF
 
 	body = string(raw)
 	return
@@ -427,6 +435,7 @@ func TestOAuth2HTTP(t *testing.T) {
 	// retrieve a testing content path
 	body, err := getContentHTTP(getContentRequest(token, ts.URL+"/content"))
 	if err != nil {
+		t.Logf("hello: %#v", err)
 		t.Errorf(err.Error())
 		return
 	}

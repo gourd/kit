@@ -2,7 +2,6 @@
 package oauth2
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -87,7 +86,7 @@ func (d *AccessData) ToOsin() (od *osin.AccessData) {
 }
 
 // ReadOsin reads an osin's AccessData into the AccessData instance
-func (d *AccessData) ReadOsin(od *osin.AccessData) error {
+func (d *AccessData) ReadOsin(od *osin.AccessData) (err error) {
 
 	// read parameters that could be directly read
 	d.AccessToken = od.AccessToken
@@ -104,16 +103,14 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) error {
 			d.Client = c
 			d.ClientId = c.GetId()
 		} else {
-			err := fmt.Errorf("Failed to read client from osin.AccessData (%#v)", od.Client)
-			return err
+			err = fmt.Errorf("Failed to read client from osin.AccessData (%#v)", od.Client)
+			return
 		}
 	}
 	if od.AuthorizeData != nil {
 		// read the AuthorizeData and store as JSON
 		oaud := &AuthorizeData{}
 		oaud.ReadOsin(od.AuthorizeData)
-		b, _ := json.Marshal(d.AuthorizeData)
-		d.AuthorizeDataJSON = string(b)
 		d.AuthorizeData = oaud
 
 		// remember the user_id
@@ -121,17 +118,19 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) error {
 	}
 	if od.AccessData != nil {
 		if *od == *od.AccessData {
-			panic("recursive referencing")
+			err = fmt.Errorf(".AccessData referencing itself")
+			return
 		}
 		oacd := &AccessData{}
 		oacd.ReadOsin(od.AccessData)
 	}
 	if od.UserData != nil {
-		user := od.UserData.(*User) // presume *User here
-		d.UserId = user.Id
+		if d.UserId, err = UserDataID(od.UserData); err != nil {
+			return
+		}
 	}
 
-	return nil
+	return
 }
 
 // Scopes read the scope field into Scopes type

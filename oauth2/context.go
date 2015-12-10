@@ -125,6 +125,12 @@ func LoadTokenAccess(ctx context.Context) context.Context {
 		return ctx
 	}
 
+	log.Printf("osinAccess.UserData %#v", osinAccess.UserData)
+	switch osinAccess.UserData.(type) {
+	case *User:
+	default:
+		panic("hello")
+	}
 	ad := &AccessData{}
 	ad.ReadOsin(osinAccess)
 	return WithAccess(ctx, ad)
