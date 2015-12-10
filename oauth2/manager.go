@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"golang.org/x/net/context"
-
 	"github.com/RangelReale/osin"
 	"github.com/gourd/kit/store"
+	"golang.org/x/net/context"
 )
 
 // Endpoints contains http handler func of different endpoints
@@ -67,11 +66,10 @@ func (m *Manager) InitOsin(cfg *osin.ServerConfig) *Manager {
 // GetEndpoints generate endpoints http handers and return
 func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 
-	// handle login
-	handleLogin := func(ar *osin.AuthorizeRequest, ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
+	// try to login with given request login
+	tryLogin := func(ctx context.Context, r *http.Request) (user OAuth2User, err error) {
 
-		w.Header().Add("Content-Type", "text/html;charset=utf8")
-		log.Printf("handleLogin")
+		log.Printf("tryLogin")
 
 		// parse POST input
 		r.ParseForm()
@@ -80,7 +78,7 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			var u OAuth2User
 			var us store.Store
 
-			// get and check password
+			// get and check password non-empty
 			password := r.Form.Get("password")
 			if password == "" {
 				err = errors.New("empty password")
@@ -114,18 +112,28 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			if !u.PasswordIs(password) {
 				log.Print("Incorrect password")
 				err = errors.New("username or password incorrect")
-			} else {
-				log.Printf("Login success")
+				return
 			}
 
 			// return pointer of user object, allow it to be re-cast
-			ar.UserData = u
+			log.Printf("Login success")
+			user = u
 			return
 		}
 
 		// no POST input or incorrect login, show form
+		// end login handling sequence and wait for
+		// user input from login form
+		err = errors.New("need login")
+		return
+	}
+
+	showLoginForm := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+
+		log.Printf("showLoginForm")
 
 		// build action query
+		ar := getOsinAuthRequest(ctx) // presume the context has *osin.AuthorizeRequest
 		aq := url.Values{}
 		aq.Add("response_type", string(ar.Type))
 		aq.Add("client_id", ar.Client.GetId())
@@ -139,25 +147,36 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 
 		log.Printf("action URL: %#v", aurl)
 
+		w.Header().Add("Content-Type", "text/html;charset=utf8")
 		m.loginFormFunc(w, r, aurl)
+	}
 
-		// end login handling sequence and wait for
-		// user input from login form
-		err = errors.New("need login")
+	type ContextHandlerFunc func(ctx context.Context,
+		w http.ResponseWriter, r *http.Request) *osin.Response
 
-		return
+	// SessionContext takes a ContextHandlerFunc and returns
+	// a http.HandlerFunc
+	SessionContext := func(inner ContextHandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// per connection based context.Context, with factory
+			ctx := store.WithFactory(context.Background(), factory)
+			defer store.CloseAllIn(ctx)
+			if resp := inner(ctx, w, r); resp != nil {
+				if resp.InternalError != nil {
+					log.Printf("Internal Error: %s", resp.InternalError.Error())
+				}
+				osin.OutputJSON(resp, w, r)
+			}
+		}
 	}
 
 	ep := Endpoints{}
 
 	// authorize endpoint
-	ep.Auth = func(w http.ResponseWriter, r *http.Request) {
+	ep.Auth = SessionContext(func(ctx context.Context,
+		w http.ResponseWriter, r *http.Request) *osin.Response {
 
 		log.Printf("auth endpoint")
-
-		// per connection based context.Context, with factory
-		ctx := store.WithFactory(context.Background(), factory)
-		defer store.CloseAllIn(ctx)
 
 		srvr := m.osinServer
 		resp := srvr.NewResponse()
@@ -166,29 +185,28 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 		// handle authorize request with osin
 		if ar := srvr.HandleAuthorizeRequest(resp, r); ar != nil {
 			log.Printf("handle authorize request")
-			if err := handleLogin(ar, ctx, w, r); err != nil {
-				return
+			// TODO: maybe redirect to another URL for
+			//       dedicated login form flow?
+			var err error
+			if ar.UserData, err = tryLogin(ctx, r); err != nil {
+				// TODO: pass the login error into showLoginForm context
+				//       and display it to the visitor
+				showLoginForm(withOsinAuthRequest(ctx, ar), w, r)
+				return nil
 			}
 			log.Printf("OAuth2 Authorize Request: User obtained: %#v", ar.UserData)
 			ar.Authorized = true
 			srvr.FinishAuthorizeRequest(resp, r, ar)
 		}
-		if resp.InternalError != nil {
-			log.Printf("Internal Error: %s", resp.InternalError.Error())
-		}
 		log.Printf("OAuth2 Authorize Response: %#v", resp)
-		osin.OutputJSON(resp, w, r)
-
-	}
+		return resp
+	})
 
 	// token endpoint
-	ep.Token = func(w http.ResponseWriter, r *http.Request) {
+	ep.Token = SessionContext(func(ctx context.Context,
+		w http.ResponseWriter, r *http.Request) *osin.Response {
 
 		log.Printf("token endpoint")
-
-		// per connection based context.Context, with factory
-		ctx := store.WithFactory(context.Background(), factory)
-		defer store.CloseAllIn(ctx)
 
 		srvr := m.osinServer
 		resp := srvr.NewResponse()
@@ -200,20 +218,14 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			log.Printf("Access successful")
 			ar.Authorized = true
 			srvr.FinishAccessRequest(resp, r, ar)
-		} else if resp.InternalError != nil {
-			log.Printf("Internal Error: %s", resp.InternalError.Error())
 		}
 		log.Printf("OAuth2 Token Response: %#v", resp)
-		osin.OutputJSON(resp, w, r)
-
-	}
+		return resp
+	})
 
 	// information endpoint
-	ep.Info = func(w http.ResponseWriter, r *http.Request) {
-
-		// per connection based context.Context, with factory
-		ctx := store.WithFactory(context.Background(), factory)
-		defer store.CloseAllIn(ctx)
+	ep.Info = SessionContext(func(ctx context.Context,
+		w http.ResponseWriter, r *http.Request) *osin.Response {
 
 		log.Printf("information endpoint")
 		srvr := m.osinServer
@@ -225,9 +237,10 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 		if ir := srvr.HandleInfoRequest(resp, r); ir != nil {
 			srvr.FinishInfoRequest(resp, r, ir)
 		}
-		osin.OutputJSON(resp, w, r)
 
-	}
+		log.Printf("OAuth2 Info Response: %#v", resp)
+		return resp
+	})
 
 	return &ep
 

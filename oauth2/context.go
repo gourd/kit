@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/RangelReale/osin"
 	"github.com/go-kit/kit/endpoint"
-
 	"golang.org/x/net/context"
 )
 
@@ -14,6 +14,7 @@ type privateKey int
 const (
 	tokenKey privateKey = iota
 	accessKey
+	osinAuthKey
 )
 
 // UseToken reads the token information from header ("Authority")
@@ -49,6 +50,25 @@ func GetAccess(ctx context.Context) (d *AccessData) {
 	log.Printf("ptr = %#v", ptr)
 	if ad, ok := ptr.(*AccessData); ok {
 		d = ad
+	}
+	return
+}
+
+// withOsinAuthRequest implements go-kit httptransport RequestFunc.
+// Adds an *osin.AuthorizeRequest to the context
+func withOsinAuthRequest(parent context.Context, ar *osin.AuthorizeRequest) context.Context {
+	return context.WithValue(parent, osinAuthKey, ar)
+}
+
+// getOsinAuthRequest retrive the *osin.AuthorizeRequest in
+// context
+func getOsinAuthRequest(ctx context.Context) (ar *osin.AuthorizeRequest) {
+	ptr := ctx.Value(osinAuthKey)
+	log.Printf("GetOsinAuthRequest(): %#v", ptr)
+	if ptr == nil {
+		return
+	} else if v, ok := ptr.(*osin.AuthorizeRequest); ok {
+		ar = v
 	}
 	return
 }
