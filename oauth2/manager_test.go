@@ -306,10 +306,18 @@ func testOAuth2Server(baseURL, msg string) http.Handler {
 	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
 	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
 
+	// router function
+	rtrFunc := func(path string, methods []string, h http.Handler) error {
+		for i := range methods {
+			rtr.Add(methods[i], path, h)
+		}
+		return nil
+	}
+
 	// add oauth2 endpoints to router
 	// ServeEndpoints bind OAuth2 endpoints to a given base path
 	// Note: this is router specific and need to be generated somehow
-	oauth2.RoutePat(rtr, baseURL, m.GetEndpoints(factory))
+	oauth2.Route(rtrFunc, baseURL, m.GetEndpoints(factory))
 
 	// add a route the requires access
 	rtr.Get("/content", func(w http.ResponseWriter, r *http.Request) {
