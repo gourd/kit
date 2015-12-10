@@ -22,47 +22,13 @@ func TestStorage(t *testing.T) {
 		return store.WithFactory(context.Background(), factory)
 	}
 
-	// creates dummy client and user directly from the stores
-	createDummies := func(ctx context.Context, password, redirect string) (*oauth2.Client, *oauth2.User) {
-
-		type tempKey int
-		const (
-			testDB tempKey = iota
-		)
-
-		// generate dummy user
-		us, err := store.Get(ctx, oauth2.KeyUser)
-		if err != nil {
-			panic(err)
-		}
-		u := dummyNewUser(password)
-		err = us.Create(store.NewConds(), u)
-		if err != nil {
-			panic(err)
-		}
-
-		// get related dummy client
-		cs, err := store.Get(ctx, oauth2.KeyClient)
-		if err != nil {
-			panic(err)
-		}
-		c := dummyNewClient(redirect)
-		c.UserId = u.Id
-		err = cs.Create(store.NewConds(), c)
-		if err != nil {
-			panic(err)
-		}
-
-		return c, u
-	}
-
 	// create dummy Client and user
 	ctx := getContext()
 	defer store.CloseAllIn(ctx)
 	storage := &oauth2.Storage{}
 	storage.SetContext(ctx)
 
-	c, u := createDummies(ctx, "password", "http://foobar.com/redirect")
+	c, u := createStoreDummies(ctx, "password", "http://foobar.com/redirect")
 	ad := dummyNewAuth(c, u)
 
 	_ = ad

@@ -133,8 +133,22 @@ func TestGetAccess_Session(t *testing.T) {
 	redirectURL := "/application/redirect"
 	password := "password"
 
+	// test store context
+	type tempKey int
+	const (
+		testDB tempKey = iota
+	)
+	factory := store.NewFactory()
+	factory.SetSource(testDB, defaultTestSrc())
+	factory.Set(oauth2.KeyUser, testDB, oauth2.UserStoreProvider)
+	factory.Set(oauth2.KeyClient, testDB, oauth2.ClientStoreProvider)
+	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
+	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
+	ctx := store.WithFactory(context.Background(), factory)
+	defer store.CloseAllIn(ctx)
+
 	// create dummy oauth client and user
-	c, u := createDummies(password, redirectURL)
+	c, u := createStoreDummies(ctx, password, redirectURL)
 
 	// run the code request
 	code, err := getCode(oauth2Srvr, getCodeRequest(c, u, password, authURL, redirectURL))
@@ -151,20 +165,6 @@ func TestGetAccess_Session(t *testing.T) {
 		return
 	}
 	t.Logf("token: %#v", token)
-
-	// define test db context
-	type tempKey int
-	const (
-		testDB tempKey = iota
-	)
-
-	factory := store.NewFactory()
-	factory.SetSource(testDB, defaultTestSrc())
-	factory.Set(oauth2.KeyUser, testDB, oauth2.UserStoreProvider)
-	factory.Set(oauth2.KeyClient, testDB, oauth2.ClientStoreProvider)
-	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
-	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
-	ctx := store.WithFactory(context.Background(), factory)
 
 	if want, have := (*oauth2.AccessData)(nil), oauth2.GetAccess(ctx); want != have {
 		t.Errorf("expected %#v, got %#v", want, have)

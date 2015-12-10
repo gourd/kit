@@ -64,22 +64,7 @@ func TestRedirectErr(t *testing.T) {
 }
 
 // creates dummy client and user directly from the stores
-func createDummies(password, redirect string) (*oauth2.Client, *oauth2.User) {
-
-	type tempKey int
-	const (
-		testDB tempKey = iota
-	)
-
-	// define test db
-	factory := store.NewFactory()
-	factory.SetSource(testDB, defaultTestSrc())
-	factory.Set(oauth2.KeyUser, testDB, oauth2.UserStoreProvider)
-	factory.Set(oauth2.KeyClient, testDB, oauth2.ClientStoreProvider)
-	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
-	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
-	ctx := store.WithFactory(context.Background(), factory)
-	defer store.CloseAllIn(ctx)
+func createStoreDummies(ctx context.Context, password, redirect string) (*oauth2.Client, *oauth2.User) {
 
 	// generate dummy user
 	us, err := store.Get(ctx, oauth2.KeyUser)
@@ -390,8 +375,24 @@ func TestOAuth2HTTP(t *testing.T) {
 	tcs := httptest.NewServer(testAppServer(tcspath))
 	defer tcs.Close()
 
+	// test store context
+	type tempKey int
+	const (
+		testDB tempKey = iota
+	)
+	factory := store.NewFactory()
+	factory.SetSource(testDB, defaultTestSrc())
+	factory.Set(oauth2.KeyUser, testDB, oauth2.UserStoreProvider)
+	factory.Set(oauth2.KeyClient, testDB, oauth2.ClientStoreProvider)
+	factory.Set(oauth2.KeyAccess, testDB, oauth2.AccessDataStoreProvider)
+	factory.Set(oauth2.KeyAuth, testDB, oauth2.AuthorizeDataStoreProvider)
+	ctx := store.WithFactory(context.Background(), factory)
+
+	// create dummy client and user
+	c, u := createStoreDummies(ctx, password, tcs.URL+tcsbase)
+	store.CloseAllIn(ctx)
+
 	// create dummy oauth client and user
-	c, u := createDummies(password, tcs.URL+tcsbase)
 	code, err := getCodeHTTP(getCodeRequest(c, u, password, authEndpoint, tcs.URL+tcspath))
 	if err != nil {
 		t.Errorf(err.Error())
@@ -407,41 +408,16 @@ func TestOAuth2HTTP(t *testing.T) {
 	}
 
 	// try to refresh token
-	log.Printf("[!!!] refresh token test!!! refresh_token=%s token=%s", refresh, token)
+	log.Printf(`refresh_token=%s token=%s msg="refresh token test"`, refresh, token)
 	token, refresh, err = getTokenHTTP(getRefreshRequest(c, refresh, tokenEndpoint))
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
-	log.Printf("[!!!] refresh token success: new refresh_token=%s token=%s", refresh, token)
+	log.Printf(`refresh_token=%s token=%s msg="refresh token test success"`, refresh, token)
 
 	// retrieve a testing content path
-	body, err := func(token, contentURL string) (body string, err error) {
-
-		log.Printf("Test accessing content with token ====")
-
-		req, err := http.NewRequest("GET", contentURL, nil)
-		req.Header.Add("Authority", token)
-
-		// new http client to emulate user request
-		hc := &http.Client{}
-		resp, err := hc.Do(req)
-		if err != nil {
-			err = fmt.Errorf("Failed run the request: %s", err.Error())
-			return
-		}
-
-		raw, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = fmt.Errorf("Failed to read body: %s", err.Error())
-			return
-		}
-
-		body = string(raw)
-		return
-	}(token, ts.URL+"/content")
-
-	// quit if error
+	body, err := getContentHTTP(getContentRequest(token, ts.URL+"/content"))
 	if err != nil {
 		t.Errorf(err.Error())
 		return
