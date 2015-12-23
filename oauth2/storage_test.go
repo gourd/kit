@@ -52,7 +52,7 @@ func TestStorage_AuthorizeData(t *testing.T) {
 
 	// Test if UserData equals to original one
 	if u1, u2 := ad.UserData.(*oauth2.User), oad.UserData.(*oauth2.User); true {
-	} else if want, have := u1.Id, u2.Id; want != have {
+	} else if want, have := u1.ID, u2.ID; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	} else if want, have := u1.Email, u2.Email; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
@@ -121,7 +121,7 @@ func TestStorage_AccessData(t *testing.T) {
 				v1, v2)
 			return
 		}
-		if v1, v2 := access.RedirectUri, oaccess.RedirectUri; v1 != v2 {
+		if v1, v2 := access.RedirectURI, oaccess.RedirectUri; v1 != v2 {
 			err = fmt.Errorf("RedirectUri mismatch.\n*oauth2.RedirectUri=%#v, *osin.RedirectUri=%#v",
 				v1, v2)
 			return
@@ -252,7 +252,7 @@ func TestStorage_AccessData_Refresh(t *testing.T) {
 				v1, v2)
 			return
 		}
-		if v1, v2 := access.RedirectUri, oaccess.RedirectUri; v1 != v2 {
+		if v1, v2 := access.RedirectURI, oaccess.RedirectUri; v1 != v2 {
 			err = fmt.Errorf("RedirectUri mismatch.\n*oauth2.RedirectUri=%#v, *osin.RedirectUri=%#v",
 				v1, v2)
 			return

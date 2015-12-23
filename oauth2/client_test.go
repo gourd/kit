@@ -3,9 +3,10 @@ package oauth2_test
 import (
 	"github.com/gourd/kit/oauth2"
 
-	"github.com/RangelReale/osin"
 	"math/rand"
 	"testing"
+
+	"github.com/RangelReale/osin"
 )
 
 func dummyNewClient(redirectUri string) *oauth2.Client {
@@ -20,10 +21,10 @@ func dummyNewClient(redirectUri string) *oauth2.Client {
 	}
 
 	return &oauth2.Client{
-		Id:          randSeq(10),
+		ID:          randSeq(10),
 		Secret:      randSeq(10),
-		RedirectUri: redirectUri,
-		UserId:      "",
+		RedirectURI: redirectUri,
+		UserID:      "",
 	}
 }
 

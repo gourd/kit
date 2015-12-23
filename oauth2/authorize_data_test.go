@@ -21,16 +21,16 @@ func dummyNewAuth(client *oauth2.Client, user *oauth2.User) *oauth2.AuthorizeDat
 	}
 
 	ad := &oauth2.AuthorizeData{
-		Id:          randSeq(10),
-		ClientId:    client.Id,
+		ID:          randSeq(10),
+		ClientID:    client.ID,
 		Client:      client,
 		Code:        randSeq(10),
 		ExpiresIn:   rand.Int31(),
 		Scope:       randSeq(10),
-		RedirectUri: client.RedirectUri + "/" + randSeq(10),
+		RedirectURI: client.RedirectURI + "/" + randSeq(10),
 		State:       randSeq(10),
 		CreatedAt:   time.Now(),
-		UserId:      user.Id,
+		UserID:      user.ID,
 		UserData:    user,
 	}
 	return ad
@@ -52,7 +52,7 @@ func dummyNewOsinAuth(client *oauth2.Client, user *oauth2.User) *osin.AuthorizeD
 		Code:        randSeq(10),
 		ExpiresIn:   rand.Int31(),
 		Scope:       randSeq(10),
-		RedirectUri: client.RedirectUri + "/" + randSeq(10),
+		RedirectUri: client.RedirectURI + "/" + randSeq(10),
 		State:       randSeq(10),
 		CreatedAt:   time.Now(),
 		UserData:    user,
@@ -76,8 +76,8 @@ func TestAuth_ToOsin(t *testing.T) {
 
 		u := dummyNewUser(password)
 		c := dummyNewClient(redirect)
-		u.Id = randSeq(20)
-		c.Id = randSeq(20)
+		u.ID = randSeq(20)
+		c.ID = randSeq(20)
 		return c, u
 	}
 
@@ -85,7 +85,7 @@ func TestAuth_ToOsin(t *testing.T) {
 	ad := dummyNewAuth(c, u)
 	oad := ad.ToOsin()
 
-	if want, have := ad.ClientId, oad.Client.GetId(); want != have {
+	if want, have := ad.ClientID, oad.Client.GetId(); want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
@@ -105,7 +105,7 @@ func TestAuth_ToOsin(t *testing.T) {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
-	if want, have := ad.RedirectUri, oad.RedirectUri; want != have {
+	if want, have := ad.RedirectURI, oad.RedirectUri; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
@@ -118,7 +118,7 @@ func TestAuth_ToOsin(t *testing.T) {
 	if u2, ok := oad.UserData.(*oauth2.User); !ok {
 		t.Errorf(".UserData is not *oauth2.User, but %#v",
 			oad.UserData)
-	} else if want, have := u2.Id, u1.Id; want != have {
+	} else if want, have := u2.ID, u1.ID; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
@@ -140,8 +140,8 @@ func TestAuth_ReadOsin(t *testing.T) {
 
 		u := dummyNewUser(password)
 		c := dummyNewClient(redirect)
-		u.Id = randSeq(20)
-		c.Id = randSeq(20)
+		u.ID = randSeq(20)
+		c.ID = randSeq(20)
 		return c, u
 	}
 
@@ -151,7 +151,7 @@ func TestAuth_ReadOsin(t *testing.T) {
 
 	ad.ReadOsin(oad)
 
-	if want, have := oad.Client.GetId(), ad.ClientId; want != have {
+	if want, have := oad.Client.GetId(), ad.ClientID; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
@@ -171,7 +171,7 @@ func TestAuth_ReadOsin(t *testing.T) {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
-	if want, have := oad.RedirectUri, ad.RedirectUri; want != have {
+	if want, have := oad.RedirectUri, ad.RedirectURI; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 
@@ -184,7 +184,7 @@ func TestAuth_ReadOsin(t *testing.T) {
 	if u1, ok := oad.UserData.(*oauth2.User); !ok {
 		t.Errorf(".UserData is not *oauth2.User, but %#v",
 			oad.UserData)
-	} else if want, have := u2.Id, u1.Id; want != have {
+	} else if want, have := u2.ID, u1.ID; want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 

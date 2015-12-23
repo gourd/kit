@@ -12,10 +12,10 @@ import (
 type AuthorizeData struct {
 
 	// Authorize Data Id
-	Id string `db:"id,omitempty" json:"id,omitempty"`
+	ID string `db:"id,omitempty" json:"id,omitempty"`
 
 	// Client Id the data is linked to
-	ClientId string `db:"client_id" json:"client_id"`
+	ClientID string `db:"client_id" json:"client_id"`
 
 	// Client information
 	Client *Client `db:"-" json:"-"`
@@ -30,7 +30,7 @@ type AuthorizeData struct {
 	Scope string `db:"scope" json:"scope"`
 
 	// Redirect Uri from request
-	RedirectUri string `db:"redirect_uri" json:"redirect_uri"`
+	RedirectURI string `db:"redirect_uri" json:"redirect_uri"`
 
 	// State data from request
 	State string `db:"state" json:"state"`
@@ -39,7 +39,7 @@ type AuthorizeData struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 
 	// User Id the data is linked to
-	UserId string `db:"user_id" json:"user_id"`
+	UserID string `db:"user_id" json:"user_id"`
 
 	// Data to be passed to storage. Not used by the osin library.
 	UserData interface{} `db:"-"`
@@ -52,7 +52,7 @@ func (d *AuthorizeData) ToOsin() (od *osin.AuthorizeData) {
 	od.Code = d.Code
 	od.ExpiresIn = d.ExpiresIn
 	od.Scope = d.Scope
-	od.RedirectUri = d.RedirectUri
+	od.RedirectUri = d.RedirectURI
 	od.State = d.State
 	od.CreatedAt = d.CreatedAt
 	od.UserData = d.UserData
@@ -69,16 +69,16 @@ func (d *AuthorizeData) ReadOsin(od *osin.AuthorizeData) (err error) {
 		err = fmt.Errorf("osin client is not of Client type: %#v", od)
 		return
 	}
-	d.ClientId = od.Client.GetId()
+	d.ClientID = od.Client.GetId()
 	d.Code = od.Code
 	d.ExpiresIn = od.ExpiresIn
 	d.Scope = od.Scope
-	d.RedirectUri = od.RedirectUri
+	d.RedirectURI = od.RedirectUri
 	d.State = od.State
 	d.CreatedAt = od.CreatedAt
 	d.UserData = od.UserData
 	if d.UserData != nil {
-		if d.UserId, err = UserDataID(d.UserData); err != nil {
+		if d.UserID, err = UserDataID(d.UserData); err != nil {
 			return
 		}
 	}

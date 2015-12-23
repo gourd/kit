@@ -84,7 +84,7 @@ func createStoreDummies(ctx context.Context, password, redirect string) (*oauth2
 		panic(err)
 	}
 	c := dummyNewClient(redirect)
-	c.UserId = u.Id
+	c.UserID = u.ID
 	err = cs.Create(store.NewConds(), c)
 	if err != nil {
 		panic(err)
@@ -274,7 +274,7 @@ func getContentHTTP(r *http.Request) (body string, err error) {
 	// new http client to emulate user request
 	hc := &http.Client{}
 	resp, err := hc.Do(r)
-	if err != nil && err != io.EOF  {
+	if err != nil && err != io.EOF {
 		log.Printf("err 1: %#v", err)
 		err = fmt.Errorf("Failed run the request: %s", err.Error())
 		return

@@ -180,21 +180,21 @@ func TestGetAccess_Session(t *testing.T) {
 		return
 	}
 
-	if want, have := "", access.Id; want != have {
+	if want, have := "", access.ID; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
-	if access.ClientId == "" {
+	if access.ClientID == "" {
 		t.Errorf("access.ClientId expected to be not empty")
 	}
 	if want, have := token, access.AccessToken; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
-	if want, have := u.Id, access.UserId; want != have {
+	if want, have := u.ID, access.UserID; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
 	if access.UserData == nil {
 		t.Error("expect access.UserData not nil")
-	} else if want, have := u.Id, access.UserData.(*oauth2.User).Id; want != have {
+	} else if want, have := u.ID, access.UserData.(*oauth2.User).ID; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
 	if access.RefreshToken == "" {

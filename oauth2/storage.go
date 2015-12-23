@@ -96,7 +96,7 @@ func (storage *Storage) SaveAuthorize(d *osin.AuthorizeData) (err error) {
 	}
 
 	// store client id with auth in database
-	e.ClientId = e.Client.GetId()
+	e.ClientID = e.Client.GetId()
 
 	// create the auth data now
 	err = srv.Create(store.NewConds(), e)
@@ -132,7 +132,7 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 
 	// load client here
 	var ok bool
-	cli, err := storage.GetClient(e.ClientId)
+	cli, err := storage.GetClient(e.ClientID)
 	if err != nil {
 		return
 	} else if e.Client, ok = cli.(*Client); !ok {
@@ -143,13 +143,13 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 	}
 
 	// load user data here
-	if e.UserId != "" {
+	if e.UserID != "" {
 		userStore, err := store.Get(storage.ctx, KeyUser)
 		if err != nil {
 			return d, err
 		}
 		user := &User{}
-		userStore.One(store.NewConds().Add("id", e.UserId), user)
+		userStore.One(store.NewConds().Add("id", e.UserID), user)
 		e.UserData = user
 	}
 
@@ -194,7 +194,7 @@ func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 	}
 
 	// store client id with access in database
-	e.ClientId = e.Client.GetId()
+	e.ClientID = e.Client.GetId()
 
 	// if AuthorizeData is set, store as JSON
 	if ad.AuthorizeData != nil {
@@ -238,7 +238,7 @@ func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
 
 	// load client here
 	var ok bool
-	cli, err := storage.GetClient(e.ClientId)
+	cli, err := storage.GetClient(e.ClientID)
 	if err != nil {
 		return
 	} else if e.Client, ok = cli.(*Client); !ok {
@@ -247,7 +247,7 @@ func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
 		log.Printf("Unable to cast client into Client type: %#v", cli)
 		return
 	}
-	e.ClientId = e.Client.GetId()
+	e.ClientID = e.Client.GetId()
 
 	// unserialize previous AuthorizeData here
 	if e.AuthorizeDataJSON != "" {
@@ -264,13 +264,13 @@ func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
 	}
 
 	// load user data here
-	if e.UserId != "" {
+	if e.UserID != "" {
 		userStore, err := store.Get(storage.ctx, KeyUser)
 		if err != nil {
 			return err
 		}
 		user := &User{}
-		userStore.One(store.NewConds().Add("id", e.UserId), user)
+		userStore.One(store.NewConds().Add("id", e.UserID), user)
 		e.UserData = user
 	}
 

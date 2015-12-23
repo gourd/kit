@@ -19,7 +19,7 @@ type OAuth2User interface {
 
 // User of the API server
 type User struct {
-	Id       string    `db:"id,omitempty" json:"id"`
+	ID       string    `db:"id,omitempty" json:"id"`
 	Username string    `db:"username" json:"username"`
 	Email    string    `db:"email" json:"email"`
 	Password string    `db:"password" json:"-"`
@@ -50,7 +50,7 @@ func UserDataID(UserData interface{}) (strID string, err error) {
 	switch UserData.(type) {
 	case *User:
 		user := UserData.(*User)
-		strID = user.Id
+		strID = user.ID
 		return
 	case map[string]interface{}:
 		vmap := UserData.(map[string]interface{})

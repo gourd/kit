@@ -11,11 +11,11 @@ import (
 // AccessData interfacing database to osin storage I/O of same name
 type AccessData struct {
 
-	// Id is the primary key of AccessData
-	Id string `db:"id,omitempty" json:"id"`
+	// ID is the primary key of AccessData
+	ID string `db:"id,omitempty" json:"id"`
 
 	// ClientId is the client which this AccessData is linked to
-	ClientId string `db:"client_id" json:"client_id"`
+	ClientID string `db:"client_id" json:"client_id"`
 
 	// Client information
 	Client *Client `db:"-" json:"-"`
@@ -45,13 +45,13 @@ type AccessData struct {
 	Scope string `db:"scope" json:"scope"`
 
 	// RedirectUri from request
-	RedirectUri string `db:"redirect_uri" json:"redirect_uri"`
+	RedirectURI string `db:"redirect_uri" json:"redirect_uri"`
 
 	// Date created
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 
 	// User Id the data is linked to
-	UserId string `db:"user_id" json:"user_id"`
+	UserID string `db:"user_id" json:"user_id"`
 
 	// Data to be passed to storage. Not used by the osin library.
 	UserData interface{} `db:"-"`
@@ -65,7 +65,7 @@ func (d *AccessData) ToOsin() (od *osin.AccessData) {
 	od.RefreshToken = d.RefreshToken
 	od.ExpiresIn = d.ExpiresIn
 	od.Scope = d.Scope
-	od.RedirectUri = d.RedirectUri
+	od.RedirectUri = d.RedirectURI
 	od.CreatedAt = d.CreatedAt
 	od.UserData = d.UserData
 
@@ -93,7 +93,7 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) (err error) {
 	d.RefreshToken = od.RefreshToken
 	d.ExpiresIn = od.ExpiresIn
 	d.Scope = od.Scope
-	d.RedirectUri = od.RedirectUri
+	d.RedirectURI = od.RedirectUri
 	d.CreatedAt = od.CreatedAt
 	d.UserData = od.UserData
 
@@ -101,7 +101,7 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) (err error) {
 	if od.Client != nil {
 		if c, ok := od.Client.(*Client); ok {
 			d.Client = c
-			d.ClientId = c.GetId()
+			d.ClientID = c.GetId()
 		} else {
 			err = fmt.Errorf("Failed to read client from osin.AccessData (%#v)", od.Client)
 			return
@@ -114,7 +114,7 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) (err error) {
 		d.AuthorizeData = oaud
 
 		// remember the user_id
-		d.UserId = oaud.UserId
+		d.UserID = oaud.UserID
 	}
 	if od.AccessData != nil {
 		if *od == *od.AccessData {
@@ -125,7 +125,7 @@ func (d *AccessData) ReadOsin(od *osin.AccessData) (err error) {
 		oacd.ReadOsin(od.AccessData)
 	}
 	if od.UserData != nil {
-		if d.UserId, err = UserDataID(od.UserData); err != nil {
+		if d.UserID, err = UserDataID(od.UserData); err != nil {
 			return
 		}
 	}

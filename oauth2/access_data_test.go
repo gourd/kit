@@ -24,15 +24,15 @@ func dummyNewAccess(client *oauth2.Client, user *oauth2.User,
 	}
 
 	access := &oauth2.AccessData{
-		Id:            randSeq(10),
-		ClientId:      client.Id,
+		ID:            randSeq(10),
+		ClientID:      client.ID,
 		Client:        client,
 		AuthorizeData: ad,
 		AccessToken:   randSeq(10),
 		RefreshToken:  randSeq(10),
-		RedirectUri:   client.RedirectUri + "/" + randSeq(10),
+		RedirectURI:   client.RedirectURI + "/" + randSeq(10),
 		CreatedAt:     time.Now(),
-		UserId:        user.Id,
+		UserID:        user.ID,
 		UserData:      user,
 	}
 
@@ -59,8 +59,8 @@ func TestAccess_ToOsin(t *testing.T) {
 
 		u := dummyNewUser(password)
 		c := dummyNewClient(redirect)
-		u.Id = randSeq(20)
-		c.Id = randSeq(20)
+		u.ID = randSeq(20)
+		c.ID = randSeq(20)
 		return c, u
 	}
 
@@ -106,7 +106,7 @@ func TestAccess_ToOsin(t *testing.T) {
 				v1, v2)
 			return
 		}
-		if v1, v2 := access.RedirectUri, oaccess.RedirectUri; v1 != v2 {
+		if v1, v2 := access.RedirectURI, oaccess.RedirectUri; v1 != v2 {
 			err = fmt.Errorf("RedirectUri mismatch.\n*oauth2.RedirectUri=%#v, *osin.RedirectUri=%#v",
 				v1, v2)
 			return
@@ -180,8 +180,8 @@ func TestAccess_FromOsin(t *testing.T) {
 
 		u := dummyNewUser(password)
 		c := dummyNewClient(redirect)
-		u.Id = randSeq(20)
-		c.Id = randSeq(20)
+		u.ID = randSeq(20)
+		c.ID = randSeq(20)
 		return c, u
 	}
 
@@ -226,7 +226,7 @@ func TestAccess_FromOsin(t *testing.T) {
 				v1, v2)
 			return
 		}
-		if v1, v2 := access.RedirectUri, oaccess.RedirectUri; v1 != v2 {
+		if v1, v2 := access.RedirectURI, oaccess.RedirectUri; v1 != v2 {
 			err = fmt.Errorf("RedirectUri mismatch.\n*oauth2.RedirectUri=%#v, *osin.RedirectUri=%#v",
 				v1, v2)
 			return
