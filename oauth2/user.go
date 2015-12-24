@@ -3,6 +3,7 @@ package oauth2
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -24,8 +25,29 @@ type User struct {
 	Email    string    `db:"email" json:"email"`
 	Password string    `db:"password" json:"-"`
 	Name     string    `db:"name" json:"name"`
+	MetaJSON string    `db:"meta_json" json:"-"`
 	Created  time.Time `db:"created" json:"created"`
 	Updated  time.Time `db:"updated" json:"updated"`
+}
+
+// Meta read MetaJSON as map[string][]string
+func (u User) Meta() (m map[string][]string) {
+	m = make(map[string][]string)
+	json.Unmarshal([]byte(u.MetaJSON), &m)
+	return
+}
+
+// AddMeta adds Meta value
+func (u *User) AddMeta(key, value string) {
+	m := u.Meta()
+	if _, ok := m[key]; !ok {
+		m[key] = make([]string, 0, 1)
+	}
+	m[key] = append(m[key], value)
+
+	b, _ := json.Marshal(m)
+	u.MetaJSON = string(b)
+	return
 }
 
 // PasswordIs matches the hash with database stored password
