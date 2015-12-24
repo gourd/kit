@@ -160,3 +160,64 @@ func TestMarshalJSON(t *testing.T) {
 		t.Errorf("expected %#v, got %#v", want, have)
 	}
 }
+
+func TestUnmarshalDB(t *testing.T) {
+	u := &oauth2.User{Name: "user 1"}
+	u.AddMeta("hello", "world 1")
+	u.AddMeta("hello", "world 2")
+
+	v, err := u.MarshalDB()
+	if err != nil {
+		t.Errorf("unexpected error: %#v", err.Error())
+		return
+	}
+
+	vmap, ok := v.(map[string]interface{})
+	if !ok {
+		t.Errorf("expected map[string]interface{}, got %#v", v)
+		return
+	}
+	if _, ok := vmap["meta_json"]; !ok {
+		t.Error("key me")
+		return
+	}
+
+	metaJSON, ok := vmap["meta_json"].(string)
+	if !ok {
+		t.Errorf("expected string, got %#v", v)
+		return
+	}
+
+	m := make(map[string][]string)
+	if err := json.Unmarshal([]byte(metaJSON), &m); err != nil {
+		t.Errorf("unexpected error %#v", err.Error())
+		return
+	}
+
+	// inspect outer
+	if want, have := 1, len(m); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+		return
+	}
+	mHello, ok := m["hello"]
+	if !ok {
+		t.Errorf("unable to find %#v in meta", "hello")
+		return
+	}
+
+	// inspect inner
+	if want, have := 2, len(mHello); want != have {
+		t.Logf("result json: %#v", metaJSON)
+		t.Logf("result mHello: %#v", mHello)
+		t.Errorf("expected %#v, got %#v", want, have)
+		return
+	}
+
+	if want, have := "world 1", mHello[0]; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+	if want, have := "world 2", mHello[1]; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+
+}

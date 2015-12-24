@@ -110,6 +110,28 @@ func (u *User) UnmarshalJSON(data []byte) (err error) {
 	return
 }
 
+// MarshalDB implement
+func (u User) MarshalDB() (v interface{}, err error) {
+	vmap := make(map[string]interface{})
+	vmap["id"] = u.ID
+	vmap["username"] = u.Username
+	vmap["email"] = u.Email
+	vmap["password"] = u.Password
+	vmap["name"] = u.Name
+	vmap["token"] = u.Token
+	vmap["created"] = u.Created
+	vmap["updated"] = u.Updated
+
+	if u.MetaJSON == "" {
+		vmap["meta_json"] = "{}"
+	} else {
+		vmap["meta_json"] = u.MetaJSON
+	}
+
+	v = vmap
+	return
+}
+
 // PasswordIs matches the hash with database stored password
 func (u *User) PasswordIs(pass string) bool {
 	if u.Password == u.Hash(pass) {
