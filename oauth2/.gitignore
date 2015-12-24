@@ -1,2 +1,8 @@
+# dependency flags
 flag.deps
+
+# temporary log files
 *.log
+
+# temporary files
+.*.swp
