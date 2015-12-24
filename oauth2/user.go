@@ -34,6 +34,7 @@ type User struct {
 type userJSON struct {
 	ID       string              `json:"id"`
 	Username string              `json:"username"`
+	Password string              `json:"password"`
 	Email    string              `json:"email"`
 	Name     string              `json:"name"`
 	Meta     map[string][]string `json:"meta"`
@@ -81,8 +82,6 @@ func (u User) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Marshaler
 func (u *User) UnmarshalJSON(data []byte) (err error) {
 
-	// TODO: handle new password here, somehow
-
 	val := userJSON{}
 	if err = json.Unmarshal(data, &val); err != nil {
 		return
@@ -95,6 +94,11 @@ func (u *User) UnmarshalJSON(data []byte) (err error) {
 	u.Name = val.Name
 	u.Created = val.Created
 	u.Updated = val.Updated
+
+	// set password, if presents
+	if val.Password != "" {
+		u.SetPassword(val.Password)
+	}
 
 	// set Meta to MetaJSON
 	b, err := json.Marshal(val.Meta)
@@ -109,6 +113,11 @@ func (u *User) PasswordIs(pass string) bool {
 		return true
 	}
 	return false
+}
+
+// SetPassword hashes the input and set to password field
+func (u *User) SetPassword(pass string) {
+	u.Password = u.Hash(pass)
 }
 
 // Hash provide the standard hashing for password

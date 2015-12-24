@@ -32,6 +32,25 @@ func TestUser(t *testing.T) {
 	_ = u
 }
 
+func TestSetGetPassword(t *testing.T) {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	randSeq := func(n int) string {
+		b := make([]rune, n)
+		for i := range b {
+			b[i] = letters[rand.Intn(len(letters))]
+		}
+		return string(b)
+	}
+	pass := randSeq(20)
+	u := &oauth2.User{}
+	u.SetPassword(pass)
+	if !u.PasswordIs(pass) {
+		t.Errorf("password is not hashed string of %#v, got %#v",
+			pass, u.Password)
+	}
+}
+
 func TestMeta(t *testing.T) {
 	u := &oauth2.User{}
 	u.MetaJSON = `{"hello": ["world 1", "world 2"]}`
