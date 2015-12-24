@@ -1,4 +1,6 @@
 //go:generate gourd gen store -type=User -coll=user $GOFILE
+//go:generate gourd gen endpoints -type=User -store=UserStore -storekey=KeyUser user_store.go
+//go:generate gourd gen rest -type=User -store=UserStore -storekey=KeyUser user_store.go
 package oauth2
 
 import (
