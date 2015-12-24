@@ -41,6 +41,7 @@ CREATE TABLE user (
   `password`  TEXT,
   `name`      TEXT,
   `meta_json` TEXT,
+  `token`     TEXT,
   `created`   INTEGER,
   `updated`   INTEGER
 );

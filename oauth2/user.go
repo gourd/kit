@@ -26,6 +26,7 @@ type User struct {
 	Password string    `db:"password" json:"-"`
 	Name     string    `db:"name" json:"name"`
 	MetaJSON string    `db:"meta_json" json:"-"`
+	Token    string    `db:"token" json:"-"` // token for lost password request
 	Created  time.Time `db:"created" json:"created"`
 	Updated  time.Time `db:"updated" json:"updated"`
 }
