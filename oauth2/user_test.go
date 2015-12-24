@@ -1,6 +1,8 @@
 package oauth2_test
 
 import (
+	"encoding/json"
+
 	"github.com/gourd/kit/oauth2"
 
 	"math/rand"
@@ -80,6 +82,53 @@ func TestAddMeta(t *testing.T) {
 	// inspect inner
 	if want, have := 2, len(mHello); want != have {
 		t.Logf("result json: %#v", u.MetaJSON)
+		t.Logf("result mHello: %#v", mHello)
+		t.Errorf("expected %#v, got %#v", want, have)
+		return
+	}
+
+	if want, have := "world 1", mHello[0]; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+	if want, have := "world 2", mHello[1]; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	u1, u2 := &oauth2.User{Name: "user 1"}, &oauth2.User{}
+	u1.AddMeta("hello", "world 1")
+	u1.AddMeta("hello", "world 2")
+
+	b, err := json.Marshal(u1)
+	if err != nil {
+		t.Errorf("unexpected error: %#v", err.Error())
+		return
+	}
+	t.Logf("marshal result: %s", b)
+
+	if err := json.Unmarshal(b, u2); err != nil {
+		t.Errorf("unexpected error: %#v", err.Error())
+		return
+	}
+
+	t.Log("test unmarshal result")
+
+	m := u2.Meta()
+	// inspect outer
+	if want, have := 1, len(m); want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+		return
+	}
+	mHello, ok := m["hello"]
+	if !ok {
+		t.Errorf("unable to find %#v in meta", "hello")
+		return
+	}
+
+	// inspect inner
+	if want, have := 2, len(mHello); want != have {
+		t.Logf("result json: %#v", u2.MetaJSON)
 		t.Logf("result mHello: %#v", mHello)
 		t.Errorf("expected %#v, got %#v", want, have)
 		return

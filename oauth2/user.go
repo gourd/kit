@@ -30,6 +30,17 @@ type User struct {
 	Updated  time.Time `db:"updated" json:"updated"`
 }
 
+// userJSON is the struct for marshaling and unmarshaling
+type userJSON struct {
+	ID       string              `json:"id"`
+	Username string              `json:"username"`
+	Email    string              `json:"email"`
+	Name     string              `json:"name"`
+	Meta     map[string][]string `json:"meta"`
+	Created  time.Time           `json:"created"`
+	Updated  time.Time           `json:"updated"`
+}
+
 // Meta read MetaJSON as map[string][]string
 func (u User) Meta() (m map[string][]string) {
 	m = make(map[string][]string)
@@ -47,6 +58,48 @@ func (u *User) AddMeta(key, value string) {
 
 	b, _ := json.Marshal(m)
 	u.MetaJSON = string(b)
+	return
+}
+
+// MarshalJSON implements json.Marshaler
+func (u User) MarshalJSON() ([]byte, error) {
+	if u.MetaJSON == "" {
+		u.MetaJSON = "{}"
+	}
+	vmap := userJSON{
+		ID:       u.ID,
+		Username: u.Username,
+		Email:    u.Email,
+		Name:     u.Name,
+		Meta:     u.Meta(),
+		Created:  u.Created,
+		Updated:  u.Updated,
+	}
+	return json.Marshal(vmap)
+}
+
+// UnmarshalJSON implements json.Marshaler
+func (u *User) UnmarshalJSON(data []byte) (err error) {
+
+	// TODO: handle new password here, somehow
+
+	val := userJSON{}
+	if err = json.Unmarshal(data, &val); err != nil {
+		return
+	}
+
+	// set all val to user
+	u.ID = val.ID
+	u.Username = val.Username
+	u.Email = val.Email
+	u.Name = val.Name
+	u.Created = val.Created
+	u.Updated = val.Updated
+
+	// set Meta to MetaJSON
+	b, err := json.Marshal(val.Meta)
+	u.MetaJSON = string(b)
+
 	return
 }
 
