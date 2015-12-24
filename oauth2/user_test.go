@@ -221,3 +221,32 @@ func TestUnmarshalDB(t *testing.T) {
 	}
 
 }
+
+func TestUnmarshalDB_EmptyMeta(t *testing.T) {
+	u := &oauth2.User{Name: "user 1"}
+	v, err := u.MarshalDB()
+	if err != nil {
+		t.Errorf("unexpected error: %#v", err.Error())
+		return
+	}
+
+	vmap, ok := v.(map[string]interface{})
+	if !ok {
+		t.Errorf("expected map[string]interface{}, got %#v", v)
+		return
+	}
+	if _, ok := vmap["meta_json"]; !ok {
+		t.Error("key me")
+		return
+	}
+
+	metaJSON, ok := vmap["meta_json"].(string)
+	if !ok {
+		t.Errorf("expected string, got %#v", v)
+		return
+	}
+
+	if want, have := "{}", metaJSON; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+}
