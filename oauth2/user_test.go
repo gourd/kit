@@ -32,6 +32,33 @@ func TestUser(t *testing.T) {
 	_ = u
 }
 
+func TestUnmarshalPassword(t *testing.T) {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	randSeq := func(n int) string {
+		b := make([]rune, n)
+		for i := range b {
+			b[i] = letters[rand.Intn(len(letters))]
+		}
+		return string(b)
+	}
+	pass := randSeq(20)
+
+	jstr := "{\"username\":\"testing\",\"password\":\"" + pass + "\"}"
+	u := &oauth2.User{}
+
+	var unmr json.Unmarshaler = u
+	_ = unmr // test if User implement json.Unmarshaler
+
+	if err := json.Unmarshal([]byte(jstr), u); err != nil {
+		t.Errorf("unexpected error %#v", err.Error())
+	}
+
+	if want, have := u.Hash(pass), u.Password; want != have {
+		t.Errorf("expected %#v, got %#v", want, have)
+	}
+}
+
 func TestSetGetPassword(t *testing.T) {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
