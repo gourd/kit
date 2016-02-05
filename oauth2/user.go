@@ -25,7 +25,7 @@ type User struct {
 	ID       string    `db:"id,omitempty" json:"id"`
 	Username string    `db:"username" json:"username"`
 	Email    string    `db:"email" json:"email"`
-	Password string    `db:"password" json:"-"`
+	Password string    `db:"password,omitempty" json:"-"`
 	Name     string    `db:"name" json:"name"`
 	MetaJSON string    `db:"meta_json" json:"-"`
 	Token    string    `db:"token" json:"-"` // token for lost password request
