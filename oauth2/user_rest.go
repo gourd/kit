@@ -6,6 +6,8 @@
 package oauth2
 
 import (
+	"bytes"
+
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
 	gourdctx "github.com/gourd/kit/context"
@@ -233,8 +235,12 @@ func UserStoreServices(paths httpservice.Paths, endpoints map[string]endpoint.En
 		// allocate entity
 		request = &User{}
 
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r.Body)
+		log.Printf("oauth.UserRest decodeJSONReq request=%s", buf.String())
+
 		// decode request
-		dec := json.NewDecoder(r.Body)
+		dec := json.NewDecoder(buf)
 		err = dec.Decode(request)
 		return
 	}
