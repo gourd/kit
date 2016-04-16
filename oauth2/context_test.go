@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/gourd/kit/oauth2"
@@ -80,14 +81,18 @@ func getToken(oauth2Srvr http.Handler, r *http.Request) (token string, err error
 
 	// read token from token endpoint response (json)
 	bodyDecoded := make(map[string]string)
-	dec := json.NewDecoder(w.Body)
-	dec.Decode(&bodyDecoded)
+	body := w.Body.String()
+	dec := json.NewDecoder(strings.NewReader(body))
+	if err := dec.Decode(&bodyDecoded); err != nil {
+		err = fmt.Errorf(
+			"Unable to parse token response: %s\nbody: %#v",
+			err.Error(), body)
+	}
 
 	var ok bool
 	if token, ok = bodyDecoded["access_token"]; !ok {
 		err = fmt.Errorf(
-			"Unable to parse access_token: %s\nbody: %#v",
-			err.Error(), bodyDecoded)
+			"Unable to find access_token, body: %#v", body)
 	} else if token == "" {
 		err = errors.New("code not found")
 	}
@@ -121,17 +126,23 @@ func getContent(srvr http.Handler, r *http.Request) (body string, err error) {
 
 func TestGetAccess_Session(t *testing.T) {
 
+	var err error
+
 	// test oauth2 server (router only)
-	oauth2URL := "/oauth2/dummy"
-	authURL := oauth2URL + "/authorize"
-	tokenURL := oauth2URL + "/token"
-	contentURL := "/content"
+	testCtx := &testContext{
+		password:     "password",
+		t:            t,
+		redirectBase: "https://test.foobar/example_app/",
+		redirectURL:  "https://test.foobar/example_app/code",
+		oauth2Path:   "/oauth2/dummy",
+	}
+
 	message := "Success"
-	oauth2Srvr := testOAuth2Server(oauth2URL, message)
+	oauth2Srvr := testOAuth2Server(t, testCtx.oauth2Path, message)
+	contentURL := "/content"
 
 	// test oauth2 client app (router only)
-	redirectURL := "/application/redirect"
-	password := "password"
+	//redirectURL := "/application/redirect"
 
 	// test store context
 	type tempKey int
@@ -148,23 +159,24 @@ func TestGetAccess_Session(t *testing.T) {
 	defer store.CloseAllIn(ctx)
 
 	// create dummy oauth client and user
-	c, u := createStoreDummies(ctx, password, redirectURL)
+	testCtx.client, testCtx.user = createStoreDummies(ctx,
+		testCtx.password, testCtx.redirectBase)
 
 	// run the code request
-	code, err := getCode(oauth2Srvr, getCodeRequest(c, u, password, authURL, redirectURL))
+	testCtx.code, err = getCode(oauth2Srvr, getCodeRequest(testCtx))
 	if err != nil {
 		t.Errorf("getCode error (%#v)", err.Error())
 		return
 	}
-	t.Logf("code:  %#v", code)
+	t.Logf("code:  %#v", testCtx.code)
 
 	// get oauth2 token
-	token, err := getToken(oauth2Srvr, getTokenRequest(c, code, tokenURL, redirectURL))
+	testCtx.token, err = getToken(oauth2Srvr, getTokenRequest(testCtx))
 	if err != nil {
-		t.Errorf("getToken error (%#v)", err.Error())
+		t.Errorf("getToken error (%s)", err.Error())
 		return
 	}
-	t.Logf("token: %#v", token)
+	t.Logf("token: %#v", testCtx.token)
 
 	if want, have := (*oauth2.AccessData)(nil), oauth2.GetAccess(ctx); want != have {
 		t.Errorf("expected %#v, got %#v", want, have)
@@ -172,7 +184,7 @@ func TestGetAccess_Session(t *testing.T) {
 
 	// middleware routine: WithAccess set context with proper token passed
 	// test getting AccessData from supposed context with AccessData
-	r := getContentRequest(token, contentURL)
+	r := getContentRequest(testCtx.token, contentURL)
 	ctx = oauth2.LoadTokenAccess(oauth2.UseToken(ctx, r))
 	access := oauth2.GetAccess(ctx)
 	if access == nil {
@@ -186,15 +198,15 @@ func TestGetAccess_Session(t *testing.T) {
 	if access.ClientID == "" {
 		t.Errorf("access.ClientId expected to be not empty")
 	}
-	if want, have := token, access.AccessToken; want != have {
+	if want, have := testCtx.token, access.AccessToken; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
-	if want, have := u.ID, access.UserID; want != have {
+	if want, have := testCtx.user.ID, access.UserID; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
 	if access.UserData == nil {
 		t.Error("expect access.UserData not nil")
-	} else if want, have := u.ID, access.UserData.(*oauth2.User).ID; want != have {
+	} else if want, have := testCtx.user.ID, access.UserData.(*oauth2.User).ID; want != have {
 		t.Errorf("expect %#v, got %#v", want, have)
 	}
 	if access.RefreshToken == "" {
