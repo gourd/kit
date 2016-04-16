@@ -8,11 +8,14 @@ which helps building RESTful CRUD data service.
 
 Contributing
 ------------
-Please see [CONTRIBUTING.md]. Thank you, [contributors]!
+Please see [CONTRIBUTING.md]
 
+[CONTRIBUTING.md]: CONTRIBUTING.md
 
 Licence
 -------
 
 This software is licenced under MIT Licence. You may find a
 copy of the licence in the [LICENCE] file in the source code.
+
+[LICENCE]: LICENCE
