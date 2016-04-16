@@ -2,7 +2,7 @@ package oauth2
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
 
 	"golang.org/x/net/context"
@@ -49,11 +49,17 @@ func (storage *Storage) Close() {
 // GetClient implements osin.Storage.GetClient
 func (storage *Storage) GetClient(id string) (c osin.Client, err error) {
 
-	log.Printf("GetClient %s", id)
+	// TODO: use logger := log.NewContext(,sg)
+	logger, errLogger := msg, errMsg
+	logger.Log(
+		"method", "GetClient",
+		"id", id)
 
 	srv, err := store.Get(storage.ctx, KeyClient)
 	if err != nil {
-		log.Printf("Unable to get client store")
+		serr := store.Error(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		serr.TellServer("unable to get client store: %s", err)
+		err = serr
 		return
 	}
 	defer srv.Close()
@@ -64,11 +70,20 @@ func (storage *Storage) GetClient(id string) (c osin.Client, err error) {
 
 	err = srv.One(conds, e)
 	if err != nil {
-		log.Printf("%#v", conds)
-		log.Printf("Failed running One()")
+		serr := store.ExpandError(err)
+		errLogger.Log(
+			"method", "GetClient",
+			"id", id,
+			"cond", conds,
+			"message", "Failed running One()",
+			"error", serr.ServerMsg)
 		return
 	} else if e == nil {
-		log.Printf("Client not found for the id %#v", id)
+		errLogger.Log(
+			"method", "GetClient",
+			"id", id,
+			"cond", fmt.Sprintf("%#v", conds),
+			"message", "Client not found")
 		err = store.Error(http.StatusNotFound,
 			"Client not found for the given id")
 		return
@@ -81,7 +96,11 @@ func (storage *Storage) GetClient(id string) (c osin.Client, err error) {
 // SaveAuthorize saves authorize data.
 func (storage *Storage) SaveAuthorize(d *osin.AuthorizeData) (err error) {
 
-	log.Printf("SaveAuthorize %v", d)
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"method", "SaveAuthorize",
+		"*osin.AuthorizeData", d)
 
 	srv, err := store.Get(storage.ctx, KeyAuth)
 	if err != nil {
@@ -108,7 +127,11 @@ func (storage *Storage) SaveAuthorize(d *osin.AuthorizeData) (err error) {
 // Optionally can return error if expired.
 func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err error) {
 
-	log.Printf("LoadAuthorize %s", code)
+	// TODO: use logger := log.NewContext(,sg)
+	logger, errLogger := msg, errMsg
+	logger.Log(
+		"method", "LoadAuthorize",
+		"code", code)
 
 	// loading osin using osin storage
 	srv, err := store.Get(storage.ctx, KeyAuth)
@@ -138,7 +161,13 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 	} else if e.Client, ok = cli.(*Client); !ok {
 		err = store.Error(http.StatusInternalServerError,
 			"Internal Server Error")
-		log.Printf("Unable to cast client into Client type: %#v", cli)
+
+		errLogger.Log(
+			"method", "GetClient",
+			"code", code,
+			"cond", conds,
+			"raw client", fmt.Sprintf("%#v", cli),
+			"message", "Unable to cast raw client into Client")
 		return
 	}
 
@@ -160,7 +189,11 @@ func (storage *Storage) LoadAuthorize(code string) (d *osin.AuthorizeData, err e
 // RemoveAuthorize revokes or deletes the authorization code.
 func (storage *Storage) RemoveAuthorize(code string) (err error) {
 
-	log.Printf("RemoveAuthorize %s", code)
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"method", "RemoveAuthorize",
+		"code", code)
 
 	srv, err := store.Get(storage.ctx, KeyAuth)
 	if err != nil {
@@ -178,7 +211,11 @@ func (storage *Storage) RemoveAuthorize(code string) (err error) {
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
 func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 
-	log.Printf("SaveAccess %#v", ad)
+	// TODO: use logger := log.NewContext(,sg)
+	logger, errLogger := msg, errMsg
+	logger.Log(
+		"method", "SaveAccess",
+		"*osin.AccessData", ad)
 
 	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
@@ -228,7 +265,11 @@ func (storage *Storage) SaveAccess(ad *osin.AccessData) (err error) {
 
 	// create in database
 	if err = srv.Create(store.NewConds(), e); err != nil {
-		log.Printf("SaveAccess error: %#v", err.Error())
+		serr := store.ExpandError(err)
+		errLogger.Log(
+			"method", "SaveAccess",
+			"*osin.AccessData", ad,
+			"err", serr.ServerMsg)
 	}
 	return
 }
@@ -242,9 +283,10 @@ func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
 	if err != nil {
 		return
 	} else if e.Client, ok = cli.(*Client); !ok {
-		err = store.Error(http.StatusInternalServerError,
+		serr := store.Error(http.StatusInternalServerError,
 			"Internal Server Error")
-		log.Printf("Unable to cast client into Client type: %#v", cli)
+		serr.TellServer("Unable to cast client into Client type: %#v", cli)
+		err = serr
 		return
 	}
 	e.ClientID = e.Client.GetId()
@@ -283,7 +325,11 @@ func (storage *Storage) loadAccessSupp(e *AccessData) (err error) {
 // Optionally can return error if expired.
 func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error) {
 
-	log.Printf("LoadAccess %v", token)
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"method", "LoadAccess",
+		"token", token)
 
 	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
@@ -316,7 +362,11 @@ func (storage *Storage) LoadAccess(token string) (d *osin.AccessData, err error)
 // RemoveAccess revokes or deletes an AccessData.
 func (storage *Storage) RemoveAccess(token string) (err error) {
 
-	log.Printf("RemoveAccess %v", token)
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"method", "RemoveAccess",
+		"token", token)
 
 	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
@@ -335,7 +385,11 @@ func (storage *Storage) RemoveAccess(token string) (err error) {
 // Optionally can return error if expired.
 func (storage *Storage) LoadRefresh(token string) (d *osin.AccessData, err error) {
 
-	log.Printf("LoadRefresh %v", token)
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"method", "LoadRefresh",
+		"token", token)
 
 	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {
@@ -368,7 +422,11 @@ func (storage *Storage) LoadRefresh(token string) (d *osin.AccessData, err error
 // RemoveRefresh revokes or deletes refresh AccessData.
 func (storage *Storage) RemoveRefresh(token string) (err error) {
 
-	log.Printf("RemoveRefresh %v", token)
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"method", "RemoveRefresh",
+		"token", token)
 
 	srv, err := store.Get(storage.ctx, KeyAccess)
 	if err != nil {

@@ -2,7 +2,7 @@ package oauth2
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -69,7 +69,9 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 	// try to login with given request login
 	tryLogin := func(ctx context.Context, r *http.Request) (user OAuth2User, err error) {
 
-		log.Printf("tryLogin")
+		logger := msg
+		logger.Log(
+			"func", "tryLogin (Manager.GetEndpoints)")
 
 		// parse POST input
 		r.ParseForm()
@@ -88,8 +90,10 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			// obtain user store
 			us, err = store.Get(ctx, KeyUser)
 			if err != nil {
-				log.Printf("Error obtaining user store: %s", err.Error())
-				err = errors.New("Internal Server Error")
+				err = store.Error(
+					http.StatusInternalServerError,
+					http.StatusText(http.StatusInternalServerError)).
+					TellServer("error obtaining user store: %s", err.Error())
 				return
 			}
 
@@ -97,26 +101,30 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			u, err = m.userFunc(r, us)
 			if err != nil {
 				serr := store.ExpandError(err)
-				log.Printf("Error obtaining user: %#v", serr.ServerMsg)
+				err = store.Error(
+					http.StatusInternalServerError,
+					http.StatusText(http.StatusInternalServerError)).
+					TellServer("error obtaining user: %s", serr.ServerMsg)
 				return
 			}
 
 			// if user is nil, user not found
 			if u == nil {
-				log.Printf("User not found")
-				err = errors.New("user not found")
+				err = store.Error(http.StatusBadRequest, "user not found")
 				return
 			}
 
 			// if password does not match
 			if !u.PasswordIs(password) {
-				log.Print("Incorrect password")
-				err = errors.New("username or password incorrect")
+				err = store.Error(http.StatusBadRequest, "username or password incorrect").
+					TellServer("incorrect password")
 				return
 			}
 
 			// return pointer of user object, allow it to be re-cast
-			log.Printf("Login success")
+			logger.Log(
+				"func", "tryLogin (Manager.GetEndpoints)",
+				"message", "login success")
 			user = u
 			return
 		}
@@ -124,13 +132,16 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 		// no POST input or incorrect login, show form
 		// end login handling sequence and wait for
 		// user input from login form
-		err = errors.New("need login")
+		err = store.Error(http.StatusUnauthorized, "Require login").
+			TellServer("no POST input")
 		return
 	}
 
 	showLoginForm := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
-		log.Printf("showLoginForm")
+		logger := msg
+		logger.Log(
+			"func", "showLoginForm (Manager.GetEndpoints)")
 
 		// build action query
 		ar := getOsinAuthRequest(ctx) // presume the context has *osin.AuthorizeRequest
@@ -145,7 +156,9 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 		aurl := r.URL
 		aurl.RawQuery = aq.Encode()
 
-		log.Printf("action URL: %#v", aurl)
+		logger.Log(
+			"func", "showLoginForm (Manager.GetEndpoints)",
+			"action url", aurl)
 
 		w.Header().Add("Content-Type", "text/html;charset=utf8")
 		m.loginFormFunc(w, r, aurl)
@@ -154,16 +167,19 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 	type ContextHandlerFunc func(ctx context.Context,
 		w http.ResponseWriter, r *http.Request) *osin.Response
 
-	// SessionContext takes a ContextHandlerFunc and returns
+	// sessionContext takes a ContextHandlerFunc and returns
 	// a http.HandlerFunc
-	SessionContext := func(inner ContextHandlerFunc) http.HandlerFunc {
+	sessionContext := func(inner ContextHandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			// per connection based context.Context, with factory
 			ctx := store.WithFactory(context.Background(), factory)
 			defer store.CloseAllIn(ctx)
 			if resp := inner(ctx, w, r); resp != nil {
 				if resp.InternalError != nil {
-					log.Printf("Internal Error: %s", resp.InternalError.Error())
+					errLogger := errMsg
+					errLogger.Log(
+						"func", "sessionContext (Manager.GetEndpoints)",
+						"error", resp.InternalError.Error())
 				}
 				osin.OutputJSON(resp, w, r)
 			}
@@ -173,10 +189,12 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 	ep := Endpoints{}
 
 	// authorize endpoint
-	ep.Auth = SessionContext(func(ctx context.Context,
+	ep.Auth = sessionContext(func(ctx context.Context,
 		w http.ResponseWriter, r *http.Request) *osin.Response {
 
-		log.Printf("auth endpoint")
+		logger := msg
+		logger.Log(
+			"endpoint", "auth")
 
 		srvr := m.osinServer
 		resp := srvr.NewResponse()
@@ -184,7 +202,10 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 
 		// handle authorize request with osin
 		if ar := srvr.HandleAuthorizeRequest(resp, r); ar != nil {
-			log.Printf("handle authorize request")
+			logger.Log(
+				"endpoint", "auth",
+				"message", "handle authorize request")
+
 			// TODO: maybe redirect to another URL for
 			//       dedicated login form flow?
 			var err error
@@ -194,19 +215,31 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 				showLoginForm(withOsinAuthRequest(ctx, ar), w, r)
 				return nil
 			}
-			log.Printf("OAuth2 Authorize Request: User obtained: %#v", ar.UserData)
+
+			logger.Log(
+				"endpoint", "auth",
+				"message", "User obtained",
+				"osin.AuthorizeData.UserData", fmt.Sprintf("%#v", ar.UserData))
+
 			ar.Authorized = true
 			srvr.FinishAuthorizeRequest(resp, r, ar)
 		}
-		log.Printf("OAuth2 Authorize Response: %#v", resp)
+
+		logger.Log(
+			"endpoint", "auth",
+			"message", "User obtained",
+			"response", fmt.Sprintf("%#v", resp))
+
 		return resp
 	})
 
 	// token endpoint
-	ep.Token = SessionContext(func(ctx context.Context,
+	ep.Token = sessionContext(func(ctx context.Context,
 		w http.ResponseWriter, r *http.Request) *osin.Response {
 
-		log.Printf("token endpoint")
+		logger := msg
+		logger.Log(
+			"endpoint", "token")
 
 		srvr := m.osinServer
 		resp := srvr.NewResponse()
@@ -215,19 +248,27 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 		if ar := srvr.HandleAccessRequest(resp, r); ar != nil {
 			// TODO: handle authorization
 			// check if the user has the permission to grant the scope
-			log.Printf("Access successful")
+			logger.Log(
+				"endpoint", "token",
+				"message", "access successful")
 			ar.Authorized = true
 			srvr.FinishAccessRequest(resp, r, ar)
 		}
-		log.Printf("OAuth2 Token Response: %#v", resp)
+
+		logger.Log(
+			"endpoint", "token",
+			"response", fmt.Sprintf("%#v", resp))
 		return resp
 	})
 
 	// information endpoint
-	ep.Info = SessionContext(func(ctx context.Context,
+	ep.Info = sessionContext(func(ctx context.Context,
 		w http.ResponseWriter, r *http.Request) *osin.Response {
 
-		log.Printf("information endpoint")
+		logger := msg
+		logger.Log(
+			"endpoint", "information")
+
 		srvr := m.osinServer
 
 		resp := srvr.NewResponse()
@@ -238,7 +279,9 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			srvr.FinishInfoRequest(resp, r, ir)
 		}
 
-		log.Printf("OAuth2 Info Response: %#v", resp)
+		logger.Log(
+			"endpoint", "information",
+			"response", fmt.Sprintf("%#v", resp))
 		return resp
 	})
 

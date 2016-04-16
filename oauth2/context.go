@@ -1,7 +1,7 @@
 package oauth2
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 
 	"github.com/RangelReale/osin"
@@ -43,11 +43,16 @@ func WithAccess(parent context.Context, ad *AccessData) context.Context {
 // GetAccess returns oauth2 AccessData stored in session
 func GetAccess(ctx context.Context) (d *AccessData) {
 	ptr := ctx.Value(accessKey)
-	log.Printf("GetAccess(): %#v", ptr)
+
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"func", "GetAccess",
+		"access", fmt.Sprintf("%#v", ptr))
+
 	if ptr == nil {
 		return
 	}
-	log.Printf("ptr = %#v", ptr)
 	if ad, ok := ptr.(*AccessData); ok {
 		d = ad
 	}
@@ -64,7 +69,12 @@ func withOsinAuthRequest(parent context.Context, ar *osin.AuthorizeRequest) cont
 // context
 func getOsinAuthRequest(ctx context.Context) (ar *osin.AuthorizeRequest) {
 	ptr := ctx.Value(osinAuthKey)
-	log.Printf("GetOsinAuthRequest(): %#v", ptr)
+
+	// TODO: use logger := log.NewContext(,sg)
+	logger := msg
+	logger.Log(
+		"func", "getOsinAuthRequest",
+		"access", fmt.Sprintf("%#v", ptr))
 	if ptr == nil {
 		return
 	} else if v, ok := ptr.(*osin.AuthorizeRequest); ok {
@@ -90,8 +100,14 @@ func Middleware(inner endpoint.Endpoint) endpoint.Endpoint {
 
 		osinAccess, err := storage.LoadAccess(token)
 		if err != nil {
-			log.Printf("UseTokenAccess failed to load access. token=%#v err=%#v",
-				token, err.Error())
+
+			// TODO: use logger := log.NewContext(,sg)
+			errLogger := errMsg
+			errLogger.Log(
+				"func", "LoadTokenAccess (Middleware)",
+				"token", token,
+				"message", "storage.LoadAccess failed to load access",
+				"error", err.Error())
 			return ctx
 		}
 
@@ -113,6 +129,8 @@ func LoadTokenAccess(ctx context.Context) context.Context {
 	storage := &Storage{}
 	storage.SetContext(ctx)
 
+	logger, errLogger := msg, errMsg
+
 	token := GetToken(ctx)
 	if token == "" {
 		return ctx
@@ -120,12 +138,19 @@ func LoadTokenAccess(ctx context.Context) context.Context {
 
 	osinAccess, err := storage.LoadAccess(token)
 	if err != nil {
-		log.Printf("UseTokenAccess failed to load access. token=%#v err=%#v",
-			token, err.Error())
+		errLogger.Log(
+			"func", "LoadTokenAccess",
+			"token", token,
+			"message", "storage.LoadAccess failed to load access",
+			"error", err.Error())
 		return ctx
 	}
 
-	log.Printf("osinAccess.UserData %#v", osinAccess.UserData)
+	logger.Log(
+		"func", "LoadTokenAccess",
+		"token", token,
+		"osinAccess.UserData", fmt.Sprintf("%#v", osinAccess.UserData))
+
 	switch osinAccess.UserData.(type) {
 	case *User:
 	default:

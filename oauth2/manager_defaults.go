@@ -5,8 +5,6 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/gourd/kit/store"
 
-	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"text/template"
@@ -82,7 +80,8 @@ func NewUserFunc(idName string) UserFunc {
 		id := r.Form.Get(idName)
 
 		if id == "" {
-			err = errors.New("empty user identifier")
+			serr := store.Error(http.StatusBadRequest, "empty user identifier")
+			err = serr
 			return
 		}
 
@@ -99,14 +98,19 @@ func NewUserFunc(idName string) UserFunc {
 
 		if err != nil {
 			serr := store.ExpandError(err)
-			log.Printf("Error searching user \"%s\": %s", id, serr.ServerMsg)
+			if serr.Status != http.StatusNotFound {
+				serr.TellServer("Error searching user %#v: %s", id, serr.ServerMsg)
+				return
+			}
+			err = serr
 			return
 		}
 
 		// if user does not exists
 		if u == nil {
-			log.Printf("Unknown user \"%s\" attempt to login", id)
-			err = errors.New("Username or Password incorrect")
+			serr := store.Error(http.StatusBadRequest, "Username or Password incorrect")
+			serr.TellServer("Unknown user %#v attempt to login", id)
+			err = serr
 			return
 		}
 
@@ -114,8 +118,9 @@ func NewUserFunc(idName string) UserFunc {
 		// and do password check
 		ou, ok := u.(OAuth2User)
 		if !ok {
-			log.Printf("User cannot be cast as OAuth2User")
-			err = errors.New("Internal server error")
+			serr := store.Error(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			serr.TellServer("User cannot be cast as OAuth2User")
+			err = serr
 			return
 		}
 
@@ -146,7 +151,9 @@ func NewLoginFormFunc(tpl string) LoginFormFunc {
 		// render the form with vars
 		err = loginTpl.Execute(w, vars)
 		if err != nil {
-			log.Printf("error executing login template: %#v", err.Error())
+			serr := store.ExpandError(err)
+			serr.TellServer("error executing login template: %#v", err.Error())
+			err = serr
 			return
 		}
 
