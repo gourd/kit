@@ -100,7 +100,13 @@ func (m *Manager) showLoginForm(lctx *LoginFormContext, w http.ResponseWriter, r
 	lctx.ActionURL = aurl
 
 	w.Header().Add("Content-Type", "text/html;charset=utf8")
-	m.loginFormFunc(lctx)
+	if err := m.loginFormFunc(lctx); err != nil {
+		serr := store.ExpandError(err)
+		logger.Log(
+			"func", "showLoginForm (Manager.GetEndpoints)",
+			"action url", aurl,
+			"error", serr.ServerMsg)
+	}
 }
 
 // GetEndpoints generate endpoints http handers and return
@@ -223,6 +229,12 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			//       dedicated login form flow?
 			var err error
 			if ar.UserData, err = tryLogin(ctx, r); err != nil {
+				serr := store.ExpandError(err)
+				logger.Log(
+					"endpoint", "auth",
+					"message", "handle authorize request",
+					"error", serr.ServerMsg)
+
 				lctx := &LoginFormContext{
 					Context:        withOsinAuthRequest(ctx, ar),
 					LoginErr:       err,
