@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/RangelReale/osin"
+	"github.com/go-kit/kit/log"
 	"github.com/gourd/kit/store"
 	"golang.org/x/net/context"
 )
@@ -29,7 +30,7 @@ func NewManager() (m *Manager) {
 
 	// set default login form handler
 	// (only handles GET request of the authorize endpoint)
-	m.SetLoginFormFunc(NewLoginFormFunc(DefaultLoginTpl))
+	m.SetLoginFormFunc(NewLoginFormFunc("user_id", DefaultLoginTpl))
 
 	// set default login parser
 	m.SetUserFunc(NewUserFunc("user_id"))
@@ -42,10 +43,20 @@ func NewManager() (m *Manager) {
 // is returned
 type UserFunc func(r *http.Request, us store.Store) (u OAuth2User, err error)
 
+// LoginFormContext represents the context of the login form rendering
+type LoginFormContext struct {
+	Context        context.Context
+	ResponseWriter http.ResponseWriter
+	Request        *http.Request
+	LoginErr       error
+	ActionURL      *url.URL
+	Logger         log.Logger
+}
+
 // LoginFormFunc handles GET request of the authorize endpoint
 // and displays a login form for user to login.
 // The action parameter provides a pre-rendered URL to login
-type LoginFormFunc func(w http.ResponseWriter, r *http.Request, action *url.URL) (err error)
+type LoginFormFunc func(lctx *LoginFormContext) (err error)
 
 // Manager handles oauth2 related request
 // Also provide middleware for other http handler function
@@ -61,6 +72,35 @@ type Manager struct {
 func (m *Manager) InitOsin(cfg *osin.ServerConfig) *Manager {
 	m.osinServer = osin.NewServer(cfg, m.storage)
 	return m
+}
+
+func (m *Manager) showLoginForm(lctx *LoginFormContext, w http.ResponseWriter, r *http.Request) {
+
+	logger := msg
+	logger.Log(
+		"func", "showLoginForm (Manager.GetEndpoints)")
+
+	// build action query
+	ar := getOsinAuthRequest(lctx.Context) // presume the context has *osin.AuthorizeRequest
+	aq := url.Values{}
+	aq.Add("response_type", string(ar.Type))
+	aq.Add("client_id", ar.Client.GetId())
+	aq.Add("state", ar.State)
+	aq.Add("scope", ar.Scope)
+	aq.Add("redirect_uri", ar.RedirectUri)
+
+	// form action url
+	aurl := r.URL
+	aurl.RawQuery = aq.Encode()
+
+	logger.Log(
+		"func", "showLoginForm (Manager.GetEndpoints)",
+		"action url", aurl)
+
+	lctx.ActionURL = aurl
+
+	w.Header().Add("Content-Type", "text/html;charset=utf8")
+	m.loginFormFunc(lctx)
 }
 
 // GetEndpoints generate endpoints http handers and return
@@ -137,33 +177,6 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 		return
 	}
 
-	showLoginForm := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-
-		logger := msg
-		logger.Log(
-			"func", "showLoginForm (Manager.GetEndpoints)")
-
-		// build action query
-		ar := getOsinAuthRequest(ctx) // presume the context has *osin.AuthorizeRequest
-		aq := url.Values{}
-		aq.Add("response_type", string(ar.Type))
-		aq.Add("client_id", ar.Client.GetId())
-		aq.Add("state", ar.State)
-		aq.Add("scope", ar.Scope)
-		aq.Add("redirect_uri", ar.RedirectUri)
-
-		// form action url
-		aurl := r.URL
-		aurl.RawQuery = aq.Encode()
-
-		logger.Log(
-			"func", "showLoginForm (Manager.GetEndpoints)",
-			"action url", aurl)
-
-		w.Header().Add("Content-Type", "text/html;charset=utf8")
-		m.loginFormFunc(w, r, aurl)
-	}
-
 	type ContextHandlerFunc func(ctx context.Context,
 		w http.ResponseWriter, r *http.Request) *osin.Response
 
@@ -210,9 +223,14 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			//       dedicated login form flow?
 			var err error
 			if ar.UserData, err = tryLogin(ctx, r); err != nil {
-				// TODO: pass the login error into showLoginForm context
-				//       and display it to the visitor
-				showLoginForm(withOsinAuthRequest(ctx, ar), w, r)
+				lctx := &LoginFormContext{
+					Context:        withOsinAuthRequest(ctx, ar),
+					LoginErr:       err,
+					ResponseWriter: w,
+					Request:        r,
+					Logger:         logger,
+				}
+				m.showLoginForm(lctx, w, r)
 				return nil
 			}
 
