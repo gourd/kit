@@ -147,10 +147,15 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 			u, err = m.userFunc(r, us)
 			if err != nil {
 				serr := store.ExpandError(err)
-				err = store.Error(
-					http.StatusInternalServerError,
-					http.StatusText(http.StatusInternalServerError)).
-					TellServer("error obtaining user: %s", serr.ServerMsg)
+				if serr.Status == http.StatusNotFound {
+					err = store.Error(http.StatusBadRequest, "user id or password incorrect").
+						TellServer("user not found")
+				} else {
+					err = store.Error(
+						http.StatusInternalServerError,
+						http.StatusText(http.StatusInternalServerError)).
+						TellServer("error obtaining user: %s", serr.ServerMsg)
+				}
 				return
 			}
 
@@ -162,7 +167,7 @@ func (m *Manager) GetEndpoints(factory store.Factory) *Endpoints {
 
 			// if password does not match
 			if !u.PasswordIs(password) {
-				err = store.Error(http.StatusBadRequest, "username or password incorrect").
+				err = store.Error(http.StatusBadRequest, "user id or password incorrect").
 					TellServer("incorrect password")
 				return
 			}
