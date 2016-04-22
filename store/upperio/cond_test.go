@@ -27,7 +27,7 @@ func TestConds(t *testing.T) {
 		AddCond("FooBar !=", "hello world")
 
 	// dummy source
-	source := upperio.Source(testUpperDb(fn))
+	source := upperio.NewSource(testUpperDb(fn))
 
 	// add dummy data to the database
 	if err := testUpperDbData(source); err != nil {
@@ -35,7 +35,7 @@ func TestConds(t *testing.T) {
 	}
 
 	// connect to database again
-	conn, err := source()
+	conn, err := source.Open()
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -86,7 +86,7 @@ func TestConds_branching(t *testing.T) {
 	q.GetConds().SetRel(store.Or)
 
 	// test source
-	source := upperio.Source(testUpperDb(fn))
+	source := upperio.NewSource(testUpperDb(fn))
 
 	// add dummy data to the database
 	if err := testUpperDbData(source); err != nil {
@@ -94,7 +94,7 @@ func TestConds_branching(t *testing.T) {
 	}
 
 	// connect to database again
-	conn, err := source()
+	conn, err := source.Open()
 	if err != nil {
 		t.Error(err.Error())
 	}

@@ -20,15 +20,27 @@ func (conn *Conn) Close() {
 	conn.db.Close()
 }
 
-// Source create store.Source from
-func Source(adapter string, connURL db.ConnectionURL) store.Source {
-	return func() (s store.Conn, err error) {
-		database, err := db.Open(adapter, connURL)
-		if err != nil {
-			return
-		}
+// Source is the upperio implementation of store.Source
+type Source struct {
+	adapter string
+	connURL db.ConnectionURL
+}
 
-		s = &Conn{db: database}
+// Open implements store.Source
+func (src *Source) Open() (s store.Conn, err error) {
+	database, err := db.Open(src.adapter, src.connURL)
+	if err != nil {
 		return
+	}
+
+	s = &Conn{db: database}
+	return
+}
+
+// NewSource create store.Source from
+func NewSource(adapter string, connURL db.ConnectionURL) store.Source {
+	return &Source{
+		adapter: adapter,
+		connURL: connURL,
 	}
 }

@@ -38,7 +38,7 @@ func testUpperDb(fn string) (adapter string, connURL db.ConnectionURL) {
 func testUpperDbData(source store.Source) (err error) {
 
 	// dummy request
-	conn, err := source()
+	conn, err := source.Open()
 	if err != nil {
 		err = fmt.Errorf("unable to connect to source: %#v",
 			err.Error())

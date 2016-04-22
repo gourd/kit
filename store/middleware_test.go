@@ -60,7 +60,7 @@ func TestMiddleware(t *testing.T) {
 		}
 
 		factory := store.NewFactory()
-		factory.SetSource(srcKey, dummySrc)
+		factory.SetSource(srcKey, store.SourceFunc(dummySrc))
 		factory.Set(key, srcKey, func(sess interface{}) (s store.Store, err error) {
 			err = fmt.Errorf("%s", sess)
 			return

@@ -14,8 +14,8 @@ func TestSource(t *testing.T) {
 
 	// test creating the new database
 	// dummy request
-	source := upperio.Source(testUpperDb(fn))
-	conn, err := source()
+	source := upperio.NewSource(testUpperDb(fn))
+	conn, err := source.Open()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

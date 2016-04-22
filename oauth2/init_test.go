@@ -46,7 +46,7 @@ func init() {
 }
 
 func defaultTestSrc() store.Source {
-	return upperio.Source(
+	return upperio.NewSource(
 		sqlite.Adapter, sqlite.ConnectionURL{
 			Database: dbpath,
 		})

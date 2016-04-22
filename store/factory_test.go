@@ -14,12 +14,12 @@ func TestFactory_source(t *testing.T) {
 	}
 
 	factory := store.NewFactory()
-	factory.SetSource(store.DefaultSrc, dummySrc1)
+	factory.SetSource(store.DefaultSrc, store.SourceFunc(dummySrc1))
 	dummySrc2 := factory.GetSource(store.DefaultSrc)
 
 	if _, err1 := dummySrc1(); err1 == nil {
 		t.Errorf("unexpected nil value")
-	} else if _, err2 := dummySrc2(); err2 == nil {
+	} else if _, err2 := dummySrc2.Open(); err2 == nil {
 		t.Errorf("unexpected nil value")
 	} else if want, have := err1.Error(), err2.Error(); want != have {
 		t.Errorf("expected %#v, got %#v", want, have)

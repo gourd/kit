@@ -84,7 +84,7 @@ func (sts *stores) Get(key interface{}) (s Store, err error) {
 	var ok bool
 	if conn, ok = sts.conns[srcKey]; !ok {
 		source := sts.factory.GetSource(srcKey)
-		conn, err = source()
+		conn, err = source.Open()
 	}
 	if err != nil {
 		return

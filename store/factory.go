@@ -78,7 +78,17 @@ type Conn interface {
 }
 
 // Source provides connection and, if any, connection error
-type Source func() (Conn, error)
+type Source interface {
+	Open() (Conn, error)
+}
+
+// SourceFunc implements Source for functions
+type SourceFunc func() (Conn, error)
+
+// Open implements Source
+func (src SourceFunc) Open() (Conn, error) {
+	return src()
+}
 
 // Provider takes a connection and return Store
 // for that session

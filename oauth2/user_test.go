@@ -98,7 +98,7 @@ func TestDBSavePassword(t *testing.T) {
 		testDB tempKey = iota
 	)
 
-	db, err := defaultTestSrc()()
+	db, err := defaultTestSrc().Open()
 	if err != nil {
 		t.Errorf("unexpected error: %#v", err.Error())
 	}
