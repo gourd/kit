@@ -8,6 +8,6 @@ addons:
     - sqlite3
 
 go:
-  - 1.4.2
   - 1.5
+  - 1.6
   - tip
