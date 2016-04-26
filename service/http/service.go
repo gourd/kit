@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
@@ -42,6 +43,7 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 	return &Service{
 		Path:        path,
 		Methods:     []string{"GET"},
+		Weight:      0,
 		Context:     gourdctx.NewEmpty(),
 		Endpoint:    ep,
 		Middlewares: &Middlewares{},
@@ -58,6 +60,7 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 type Service struct {
 	Path        string
 	Methods     []string
+	Weight      int
 	Context     context.Context
 	Middlewares *Middlewares
 	Endpoint    endpoint.Endpoint
@@ -83,8 +86,29 @@ func (s Service) Route(rtr RouterFunc) error {
 	return rtr(s.Path, s.Methods, s.Handler())
 }
 
-// RouterFunc generalize router to route an http.Handler
-type RouterFunc func(path string, methods []string, h http.Handler) error
+// ServiceSlice attaches the method of sort.Interface to []*Service, sort in
+// increasing order
+type ServiceSlice []*Service
+
+// Len implements sort.Interface
+func (ss ServiceSlice) Len() int {
+	return len(ss)
+}
+
+// Less implements sort.Interface
+func (ss ServiceSlice) Less(i, j int) bool {
+	return ss[i].Weight < ss[j].Weight
+}
+
+// Swap implements sort.Interface
+func (ss ServiceSlice) Swap(i, j int) {
+	ss[i], ss[j] = ss[j], ss[i]
+}
+
+// Sort is a short hand for sort.Sort(ServiceSlice)
+func (ss ServiceSlice) Sort() {
+	sort.Sort(ss)
+}
 
 // Services contain a group of named services
 type Services map[string]*Service
@@ -96,11 +120,36 @@ func (services Services) Patch(patches ...ServicesPatch) {
 	}
 }
 
+// RouterFunc generalize router to route an http.Handler
+type RouterFunc func(path string, methods []string, h http.Handler) error
+
+// Each returns a channel that return services by weight order
+func (services Services) Each() <-chan *Service {
+	out := make(chan *Service)
+
+	// turn services into a slices, sort it
+	slice := ServiceSlice(make([]*Service, 0, len(services)))
+	for _, s := range services {
+		slice = append(slice, s)
+	}
+	sort.Sort(slice)
+
+	// return *Service in the slice through output channel
+	go func(out chan *Service, slice ServiceSlice) {
+		defer close(out)
+		for _, s := range slice {
+			out <- s
+		}
+	}(out, slice)
+	return out
+}
+
 // Route routes all services in the group
 func (services Services) Route(rtr RouterFunc) (err error) {
-	for name := range services {
-		if err = services[name].Route(rtr); err != nil {
-			err = fmt.Errorf("error routing %#v (%#v)", name, err.Error())
+	for service := range services.Each() {
+		if err = service.Route(rtr); err != nil {
+			err = fmt.Errorf("error routing %#v (method: %#v) (%#v)",
+				service.Path, service.Methods, err.Error())
 			return
 		}
 	}

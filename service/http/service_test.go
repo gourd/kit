@@ -97,6 +97,69 @@ func TestService_Error(t *testing.T) {
 	t.Logf("err: %#v", serr)
 }
 
+func TestServiceSlice_Sort(t *testing.T) {
+	slice := httpservice.ServiceSlice{
+		{
+			Weight: 5,
+		},
+		{
+			Weight: -1,
+		},
+		{
+			Weight: 2,
+		},
+		{
+			Weight: 1,
+		},
+		{
+			Weight: 0,
+		},
+		{
+			Weight: 4,
+		},
+	}
+	slice.Sort()
+
+	expected := []int{-1, 0, 1, 2, 4, 5}
+	for i, service := range slice {
+		if want, have := expected[i], service.Weight; want != have {
+			t.Errorf("[%d] exptected %d, got %d", i, want, have)
+		}
+	}
+}
+
+func TestServices_Each(t *testing.T) {
+	services := httpservice.Services{
+		"service1": {
+			Weight: 5,
+		},
+		"service2": {
+			Weight: -1,
+		},
+		"service3": {
+			Weight: 2,
+		},
+		"service4": {
+			Weight: 1,
+		},
+		"service5": {
+			Weight: 0,
+		},
+		"service6": {
+			Weight: 4,
+		},
+	}
+
+	i := 0
+	expected := []int{-1, 0, 1, 2, 4, 5}
+	for service := range services.Each() {
+		if want, have := expected[i], service.Weight; want != have {
+			t.Errorf("[%d] exptected %d, got %d", i, want, have)
+		}
+		i++
+	}
+}
+
 func TestServices_Route(t *testing.T) {
 	resultKey := "result"
 	servicePath := "/foo/bar"
