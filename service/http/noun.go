@@ -1,4 +1,4 @@
-package http
+package httpservice
 
 // Noun contains and return the singular and plural
 // variant of a noun

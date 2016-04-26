@@ -1,4 +1,4 @@
-package http_test
+package httpservice_test
 
 import (
 	"fmt"
