@@ -1,4 +1,4 @@
-package httpservicse
+package httpservice
 
 import (
 	"net/http"
