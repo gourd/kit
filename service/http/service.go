@@ -28,8 +28,8 @@ func jsonErrorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
 
 	// quick fix for gokit bad request wrapping problem
 	switch err.(type) {
-	case httptransport.BadRequestError:
-		err = err.(httptransport.BadRequestError).Err
+	case httptransport.Error:
+		err = err.(httptransport.Error).Err
 	}
 
 	serr := store.ExpandError(err)
