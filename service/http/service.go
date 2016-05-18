@@ -15,7 +15,7 @@ import (
 )
 
 // jsonEncodeFunc encodes given response into JSON
-func jsonEncodeFunc(w http.ResponseWriter, response interface{}) (err error) {
+func jsonEncodeFunc(ctx context.Context, w http.ResponseWriter, response interface{}) (err error) {
 	w.Header().Add("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	err = enc.Encode(response)
@@ -23,7 +23,7 @@ func jsonEncodeFunc(w http.ResponseWriter, response interface{}) (err error) {
 }
 
 // jsonErrorEncoder expands given error to StoreError then encode to JSON
-func jsonErrorEncoder(w http.ResponseWriter, err error) {
+func jsonErrorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
 	w.Header().Add("Content-Type", "application/json")
 
 	// quick fix for gokit bad request wrapping problem

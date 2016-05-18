@@ -23,7 +23,7 @@ func testServiceSuit(path, resultKey string) (s *httpservice.Service, mware endp
 		}
 		return
 	})
-	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
+	s.DecodeFunc = func(ctx context.Context, r *http.Request) (request interface{}, err error) {
 		request = "world"
 		return
 	}
@@ -75,7 +75,7 @@ func TestService_Error(t *testing.T) {
 		err = store.Error(50123, "hello error")
 		return
 	})
-	s.DecodeFunc = func(r *http.Request) (request interface{}, err error) {
+	s.DecodeFunc = func(ctx context.Context, r *http.Request) (request interface{}, err error) {
 		request = "hello world"
 		return
 	}

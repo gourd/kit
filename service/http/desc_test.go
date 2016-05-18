@@ -21,14 +21,14 @@ func testDesc() httpservice.Desc {
 
 func TestDesc_DecodeFunc(t *testing.T) {
 	d := testDesc()
-	d.SetDecodeFunc("hello", func(r *http.Request) (request interface{}, err error) {
+	d.SetDecodeFunc("hello", func(ctx context.Context, r *http.Request) (request interface{}, err error) {
 		request = "world"
 		return
 	})
 
 	// test retrieve and use the decoder
 	dec := d.GetDecodeFunc("hello")
-	req, _ := dec(nil)
+	req, _ := dec(nil, nil)
 	if want, have := "world", req; want != have {
 		t.Errorf("expected: %#v, got: %#v", want, have)
 	}
