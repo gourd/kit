@@ -48,7 +48,9 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 		Middlewares: &Middlewares{},
 		EncodeFunc:  jsonEncodeFunc,
 
-		Before:       []httptransport.RequestFunc{},
+		Before: []httptransport.RequestFunc{
+			ProvideJSONDecoder,
+		},
 		After:        []httptransport.ServerResponseFunc{},
 		ErrorEncoder: jsonErrorEncoder,
 		Options:      []httptransport.ServerOption{},
