@@ -47,9 +47,11 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 		Endpoint:    ep,
 		Middlewares: &Middlewares{},
 		EncodeFunc:  jsonEncodeFunc,
-		Options: []httptransport.ServerOption{
-			httptransport.ServerErrorEncoder(jsonErrorEncoder),
-		},
+
+		Before:       []httptransport.RequestFunc{},
+		After:        []httptransport.ServerResponseFunc{},
+		ErrorEncoder: jsonErrorEncoder,
+		Options:      []httptransport.ServerOption{},
 	}
 }
 
@@ -64,19 +66,28 @@ type Service struct {
 	Endpoint    endpoint.Endpoint
 	DecodeFunc  httptransport.DecodeRequestFunc
 	EncodeFunc  httptransport.EncodeResponseFunc
-	Options     []httptransport.ServerOption
+
+	Before       []httptransport.RequestFunc
+	After        []httptransport.ServerResponseFunc
+	ErrorEncoder httptransport.ErrorEncoder
+	Options      []httptransport.ServerOption
 }
 
 // Handler returns go-kit http transport server
 // of the given definition
 func (s Service) Handler() http.Handler {
 	ep := s.Middlewares.Chain()(s.Endpoint)
+	options := append([]httptransport.ServerOption{
+		httptransport.ServerBefore(s.Before...),
+		httptransport.ServerAfter(s.After...),
+		httptransport.ServerErrorEncoder(s.ErrorEncoder),
+	}, s.Options...)
 	return httptransport.NewServer(
 		s.Context,
 		ep,
 		s.DecodeFunc,
 		s.EncodeFunc,
-		s.Options...)
+		options...)
 }
 
 // Route add the given service to router with RouterFunc
