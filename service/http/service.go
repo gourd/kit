@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
-	gourdctx "github.com/gourd/kit/context"
 	"github.com/gourd/kit/store"
 	"golang.org/x/net/context"
 )
@@ -44,12 +43,11 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 		Path:        path,
 		Methods:     []string{"GET"},
 		Weight:      0,
-		Context:     gourdctx.NewEmpty(),
+		Context:     context.Background(),
 		Endpoint:    ep,
 		Middlewares: &Middlewares{},
 		EncodeFunc:  jsonEncodeFunc,
 		Options: []httptransport.ServerOption{
-			httptransport.ServerBefore(gourdctx.UseGorilla),
 			httptransport.ServerErrorEncoder(jsonErrorEncoder),
 		},
 	}
