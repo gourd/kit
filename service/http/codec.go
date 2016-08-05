@@ -20,9 +20,15 @@ type Decoder interface {
 // to context
 func ProvideJSONDecoder(parent context.Context, r *http.Request) context.Context {
 	if r == nil || r.Body == nil {
-		return context.WithValue(parent, decoderKey, nil)
+		return WithDecoder(parent, nil)
 	}
-	return context.WithValue(parent, decoderKey, json.NewDecoder(r.Body))
+	return WithDecoder(parent, json.NewDecoder(r.Body))
+}
+
+// WithDecoder adds a decoder to context so you can latter retrieve with
+// DecoderFrom(context)
+func WithDecoder(parent context.Context, decoder Decoder) context.Context {
+	return context.WithValue(parent, decoderKey, decoder)
 }
 
 // DecoderFrom gets decoder set to the context
