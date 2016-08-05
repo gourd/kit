@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/kit/endpoint"
+	"github.com/gourd/kit/context"
 	httpservice "github.com/gourd/kit/service/http"
 	"github.com/gourd/kit/store"
 	"golang.org/x/net/context"
@@ -95,6 +98,52 @@ func TestService_Error(t *testing.T) {
 		t.Errorf("expect: %#v, got: %#v", want, have)
 	}
 	t.Logf("err: %#v", serr)
+}
+
+func TestNewJSONService(t *testing.T) {
+
+	str := `{"hello": "world"}`
+	r1 := &http.Request{
+		Body: ioutil.NopCloser(strings.NewReader(str)),
+	}
+
+	// create handler with service
+	s := httpservice.NewJSONService("/foo/bar", func(ctx context.Context, request interface{}) (response interface{}, err error) {
+
+		r := gourdctx.HTTPRequest(ctx)
+		if want, have := r1, r; want != have {
+			t.Errorf("expected %#v, got %#v", want, have)
+		}
+
+		// retrieve the request
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body error: %s", err)
+			return
+		}
+
+		if want, have := str, string(b); want != have {
+			err = fmt.Errorf(`expected "%s", got "%s"`, want, have)
+			t.Error(err.Error())
+		}
+		response = map[string]string{
+			"result": "success",
+		}
+		return
+	})
+	s.DecodeFunc = func(ctx context.Context, r *http.Request) (request interface{}, err error) {
+		return
+	}
+	h := s.Handler()
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r1)
+
+	b, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+	t.Logf("result: %s", b)
 }
 
 func TestServiceSlice_Sort(t *testing.T) {
