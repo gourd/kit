@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 	httptransport "github.com/go-kit/kit/transport/http"
+	"github.com/gourd/kit/context"
 	"github.com/gourd/kit/store"
 	"golang.org/x/net/context"
 )
@@ -36,6 +37,15 @@ func jsonErrorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(serr)
 }
 
+func contextDecodeFunc(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	// DecoderFrom gets decoder set to the context
+	if decoder, ok := DecoderFrom(ctx); ok {
+		request = make(map[string]interface{})
+		err = decoder.Decode(&request)
+	}
+	return
+}
+
 // NewJSONService creates a service descriptor
 // with defaults for a simple JSON service
 func NewJSONService(path string, ep endpoint.Endpoint) *Service {
@@ -46,9 +56,11 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 		Context:     context.Background(),
 		Endpoint:    ep,
 		Middlewares: &Middlewares{},
+		DecodeFunc:  contextDecodeFunc,
 		EncodeFunc:  jsonEncodeFunc,
 
 		Before: []httptransport.RequestFunc{
+			gourdctx.WithHTTPRequest,
 			ProvideJSONDecoder,
 		},
 		After:        []httptransport.ServerResponseFunc{},

@@ -131,9 +131,6 @@ func TestNewJSONService(t *testing.T) {
 		}
 		return
 	})
-	s.DecodeFunc = func(ctx context.Context, r *http.Request) (request interface{}, err error) {
-		return
-	}
 	h := s.Handler()
 
 	w := httptest.NewRecorder()
