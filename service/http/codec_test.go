@@ -18,7 +18,7 @@ func TestProvideJSONDecoder(t *testing.T) {
 	_ = v
 }
 
-func TestEncoder(t *testing.T) {
+func TestDecoder(t *testing.T) {
 
 	// mock request context
 	body := ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`))
@@ -47,7 +47,7 @@ func TestEncoder(t *testing.T) {
 	}
 }
 
-func TestEncoder_Nil(t *testing.T) {
+func TestDecoder_Nil(t *testing.T) {
 
 	// mock request context
 	ctx := context.Background()
