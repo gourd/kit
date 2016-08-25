@@ -1,6 +1,7 @@
 package httpservice_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -60,5 +61,63 @@ func TestDecoder_Nil(t *testing.T) {
 	}
 	if dec != nil {
 		t.Errorf("unexpected decoder value %#v", dec)
+	}
+}
+
+func TestPartialDecoder_inherit(t *testing.T) {
+
+	// mock request context
+	body := ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`))
+	ctx := context.Background()
+	r := &http.Request{Body: body}
+	ctx = httpservice.ProvideJSONDecoder(ctx, r)
+
+	// decode the context into entity struct
+	entity := struct {
+		Hello string `json:"hello"`
+	}{}
+	dec, ok := httpservice.PartialDecoderFrom(ctx)
+
+	if !ok {
+		t.Errorf("expected ok to be true")
+	}
+
+	// test decoding
+	if err := dec.Decode(&entity); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+
+	// test decoded result
+	if want, have := "world", entity.Hello; want != have {
+		t.Errorf("exptected %#v, got %#v", want, have)
+	}
+}
+
+func TestPartialDecoder_set(t *testing.T) {
+
+	// mock request context
+	body := ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`))
+	ctx := context.Background()
+	r := &http.Request{Body: body}
+	ctx = httpservice.WithPartialDecoder(ctx, json.NewDecoder(r.Body))
+
+	// decode the context into entity struct
+	entity := struct {
+		Hello string `json:"hello"`
+	}{}
+	dec, ok := httpservice.PartialDecoderFrom(ctx)
+
+	if !ok {
+		t.Errorf("expected ok to be true")
+	}
+
+	// test decoding
+	if err := dec.Decode(&entity); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+
+	// test decoded result
+	if want, have := "world", entity.Hello; want != have {
+		t.Errorf("exptected %#v, got %#v", want, have)
 	}
 }

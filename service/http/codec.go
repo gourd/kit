@@ -9,7 +9,10 @@ import (
 
 type codecKeys int
 
-const decoderKey codecKeys = 0
+const (
+	decoderKey codecKeys = iota
+	partialDecoderKey
+)
 
 // Decoder decodes streams it receives to the pointer v provided
 type Decoder interface {
@@ -35,4 +38,18 @@ func WithDecoder(parent context.Context, decoder Decoder) context.Context {
 func DecoderFrom(ctx context.Context) (dec Decoder, ok bool) {
 	dec, ok = ctx.Value(decoderKey).(Decoder)
 	return
+}
+
+// WithPartialDecoder adds a decoder to context so you can latter retrieve with
+// DecoderFrom(context)
+func WithPartialDecoder(parent context.Context, decoder Decoder) context.Context {
+	return context.WithValue(parent, decoderKey, decoder)
+}
+
+// PartialDecoderFrom gets decoder set to the context
+func PartialDecoderFrom(ctx context.Context) (dec Decoder, ok bool) {
+	if dec, ok = ctx.Value(partialDecoderKey).(Decoder); ok {
+		return
+	}
+	return DecoderFrom(ctx)
 }
