@@ -17,6 +17,46 @@ import (
 	"golang.org/x/net/context"
 )
 
+// testEntity stores JSON as string.
+// Ensures original JSON is preserved between any
+// Encode and Decode
+type testEntity string
+
+// Set sets the given value (by json marshal)
+// to this entity
+func (entity *testEntity) Set(v interface{}) (err error) {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return
+	}
+	*entity = testEntity(raw)
+	return
+}
+
+// Get returns the given value (by json Unmarshal)
+// to a provided pointer
+func (entity testEntity) Get(v interface{}) (err error) {
+	return json.Unmarshal([]byte(entity), v)
+}
+
+func (entity testEntity) String() string {
+	return string(entity)
+}
+
+// MarshalJSON implements JSON unmarshaler
+func (entity testEntity) MarshalJSON() ([]byte, error) {
+	if len(entity) == 0 {
+		return []byte("{}"), nil
+	}
+	return []byte(entity), nil
+}
+
+// UnmarshalJSON implements JSON unmarshaler
+func (entity *testEntity) UnmarshalJSON(jsonStr []byte) (err error) {
+	*entity = testEntity(jsonStr)
+	return
+}
+
 func testServiceSuit(path, resultKey string) (s *httpservice.Service, mware endpoint.Middleware) {
 
 	// dummy service

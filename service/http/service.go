@@ -37,11 +37,10 @@ func jsonErrorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(serr)
 }
 
-func contextDecodeFunc(ctx context.Context, r *http.Request) (request interface{}, err error) {
-	// DecoderFrom gets decoder set to the context
+func delayDecodeFunc(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	// decoder as request
 	if decoder, ok := DecoderFrom(ctx); ok {
-		request = make(map[string]interface{})
-		err = decoder.Decode(&request)
+		request = decoder
 	}
 	return
 }
@@ -56,7 +55,7 @@ func NewJSONService(path string, ep endpoint.Endpoint) *Service {
 		Context:     context.Background(),
 		Endpoint:    ep,
 		Middlewares: &Middlewares{},
-		DecodeFunc:  contextDecodeFunc,
+		DecodeFunc:  delayDecodeFunc,
 		EncodeFunc:  jsonEncodeFunc,
 
 		Before: []httptransport.RequestFunc{

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	httptransport "github.com/go-kit/kit/transport/http"
+	"github.com/gourd/kit/context"
 	"github.com/gourd/kit/service/http"
 	"golang.org/x/net/context"
 )
@@ -22,9 +23,10 @@ func TestProvideJSONDecoder(t *testing.T) {
 func TestDecoder(t *testing.T) {
 
 	// mock request context
-	body := ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`))
-	ctx := context.Background()
-	r := &http.Request{Body: body}
+	r := &http.Request{
+		Body: ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`)),
+	}
+	ctx := gourdctx.WithHTTPRequest(context.Background(), r)
 	ctx = httpservice.ProvideJSONDecoder(ctx, r)
 
 	// decode the context into entity struct
@@ -67,9 +69,10 @@ func TestDecoder_Nil(t *testing.T) {
 func TestPartialDecoder_inherit(t *testing.T) {
 
 	// mock request context
-	body := ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`))
-	ctx := context.Background()
-	r := &http.Request{Body: body}
+	r := &http.Request{
+		Body: ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`)),
+	}
+	ctx := gourdctx.WithHTTPRequest(context.Background(), r)
 	ctx = httpservice.ProvideJSONDecoder(ctx, r)
 
 	// decode the context into entity struct
@@ -96,10 +99,13 @@ func TestPartialDecoder_inherit(t *testing.T) {
 func TestPartialDecoder_set(t *testing.T) {
 
 	// mock request context
-	body := ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`))
-	ctx := context.Background()
-	r := &http.Request{Body: body}
-	ctx = httpservice.WithPartialDecoder(ctx, json.NewDecoder(r.Body))
+	r := &http.Request{
+		Body: ioutil.NopCloser(strings.NewReader(`{"hello": "world"}`)),
+	}
+	ctx := gourdctx.WithHTTPRequest(context.Background(), r)
+	ctx = httpservice.WithPartialDecoder(ctx, func(r *http.Request) httpservice.Decoder {
+		return json.NewDecoder(r.Body)
+	})
 
 	// decode the context into entity struct
 	entity := struct {

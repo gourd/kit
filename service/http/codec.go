@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gourd/kit/context"
+
 	"golang.org/x/net/context"
 )
 
@@ -13,6 +15,9 @@ const (
 	decoderKey codecKeys = iota
 	partialDecoderKey
 )
+
+// DecoderProvider provides decoder
+type DecoderProvider func(r *http.Request) Decoder
 
 // Decoder decodes streams it receives to the pointer v provided
 type Decoder interface {
@@ -25,30 +30,48 @@ func ProvideJSONDecoder(parent context.Context, r *http.Request) context.Context
 	if r == nil || r.Body == nil {
 		return WithDecoder(parent, nil)
 	}
-	return WithDecoder(parent, json.NewDecoder(r.Body))
+	return WithDecoder(parent, func(r *http.Request) Decoder {
+		return json.NewDecoder(r.Body)
+	})
 }
 
 // WithDecoder adds a decoder to context so you can latter retrieve with
 // DecoderFrom(context)
-func WithDecoder(parent context.Context, decoder Decoder) context.Context {
-	return context.WithValue(parent, decoderKey, decoder)
+func WithDecoder(parent context.Context, provider DecoderProvider) context.Context {
+	return context.WithValue(parent, decoderKey, provider)
 }
 
 // DecoderFrom gets decoder set to the context
 func DecoderFrom(ctx context.Context) (dec Decoder, ok bool) {
-	dec, ok = ctx.Value(decoderKey).(Decoder)
+	var pro DecoderProvider
+	r := gourdctx.HTTPRequest(ctx)
+	if r == nil {
+		ok = false
+		return
+	}
+	if pro, ok = ctx.Value(decoderKey).(DecoderProvider); ok {
+		dec = pro(r)
+		return
+	}
 	return
 }
 
 // WithPartialDecoder adds a decoder to context so you can latter retrieve with
 // DecoderFrom(context)
-func WithPartialDecoder(parent context.Context, decoder Decoder) context.Context {
-	return context.WithValue(parent, decoderKey, decoder)
+func WithPartialDecoder(parent context.Context, provider DecoderProvider) context.Context {
+	return context.WithValue(parent, decoderKey, provider)
 }
 
 // PartialDecoderFrom gets decoder set to the context
 func PartialDecoderFrom(ctx context.Context) (dec Decoder, ok bool) {
-	if dec, ok = ctx.Value(partialDecoderKey).(Decoder); ok {
+	var pro DecoderProvider
+	r := gourdctx.HTTPRequest(ctx)
+	if r == nil {
+		ok = false
+		return
+	}
+	if pro, ok = ctx.Value(partialDecoderKey).(DecoderProvider); ok {
+		dec = pro(r)
 		return
 	}
 	return DecoderFrom(ctx)
