@@ -4,7 +4,7 @@ import (
 	"github.com/gourd/kit/store"
 
 	"fmt"
-	"upper.io/db"
+	"upper.io/db.v1"
 )
 
 // Conds Translate the store.Conds interface into

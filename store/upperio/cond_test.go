@@ -3,7 +3,7 @@ package upperio_test
 import (
 	"github.com/gourd/kit/store"
 	"github.com/gourd/kit/store/upperio"
-	"upper.io/db"
+	"upper.io/db.v1"
 
 	"os"
 	"testing"

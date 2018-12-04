@@ -2,7 +2,7 @@ package upperio
 
 import (
 	"github.com/gourd/kit/store"
-	"upper.io/db"
+	"upper.io/db.v1"
 )
 
 // Conn implements store.Conn
