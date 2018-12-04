@@ -15,7 +15,7 @@ import (
 
 	"fmt"
 	"io/ioutil"
-	"upper.io/db"
+	"upper.io/db.v1"
 )
 
 // ClientStoreProvider implements store.Provider interface
